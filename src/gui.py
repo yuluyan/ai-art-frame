@@ -6,6 +6,8 @@ import threading
 import speech_recognition as sr
 
 from utils import resize_image, get_openai_key
+from image_manager import ImageManager
+from prompt import speech_to_prompt
 
 
 class App(tk.Tk):
@@ -15,6 +17,7 @@ class App(tk.Tk):
         self.width = 1920
         self.height = 1080
 
+        # self.attributes("-fullscreen", True)
         self.title("AI Art Frame")
         self.geometry(f"{self.width}x{self.height}")
 
@@ -22,8 +25,8 @@ class App(tk.Tk):
         self.canvas.bind("<Button-1>", self.show_overlay)
         self.canvas.pack(fill="both", expand=True)
         
-        self.image_buffer = None
-        self.set_image(os.path.join(os.path.dirname(__file__), '..', 'imgs', 'art.png'))
+        self.picture_image_buffer = ImageTk.PhotoImage(Image.new("RGBA", (self.width, self.height), (0, 0, 0, 255)))
+        self.picture_buffer = self.canvas.create_image(0, 0, image=self.picture_image_buffer, anchor="nw")
 
         self.overlay_active = False
         self.overlay_image_buffer = []
@@ -38,21 +41,26 @@ class App(tk.Tk):
         self.favorite_button = tk.Button(self, text="Favorite", bg="white", command=lambda: print("Favorite"))
         self.reset_button = tk.Button(self, text="Reset", bg="white", command=self.generate_new_image)
         self.setting_button = tk.Button(self, text="Setting", bg="white", command=lambda: print("Setting"))
-        self.close_button = tk.Button(self, text="x", command=self.hide_overlay,
+        self.close_overlay_button = tk.Button(self, text="x", command=self.hide_overlay,
+                                      borderwidth=0, relief="flat", 
+                                      highlightthickness=0, overrelief="", padx=50, pady=50)
+        self.exit_button = tk.Button(self, text="<-", command=self.exit,
                                       borderwidth=0, relief="flat", 
                                       highlightthickness=0, overrelief="", padx=50, pady=50)
 
-        self.image_generator = None
+        self.image_manager: ImageManager = None
     
-    def set_generator(self, generator):
-        self.image_generator = generator
+    def set_image_manager(self, image_manager: ImageManager):
+        self.image_manager = image_manager
+        if last_record := self.image_manager.get_last_record():
+            self.set_image(self.image_manager.uuid_to_path(last_record.uuid))
 
     def set_image(self, image_path, do_resize=True):
         image = Image.open(image_path)
         if do_resize:
             image = resize_image(image, self.width, self.height)
-        self.image_buffer = ImageTk.PhotoImage(image)
-        self.canvas.create_image(0, 0, image=self.image_buffer, anchor="nw")
+        self.picture_image_buffer = ImageTk.PhotoImage(image)
+        self.canvas.itemconfig(self.picture_buffer, image=self.picture_image_buffer)
 
     def fade(self, dir):
         if dir == "in":
@@ -75,7 +83,8 @@ class App(tk.Tk):
             self.favorite_button.place(x=860, y=10)
             self.reset_button.place(x=860, y=50)
             self.setting_button.place(x=860, y=150)
-            self.close_button.place(x=1800, y=10)
+            self.close_overlay_button.place(x=1800, y=10)
+            self.exit_button.place(x=60, y=10)
 
     def hide_overlay(self):
         if self.overlay_active:
@@ -84,25 +93,38 @@ class App(tk.Tk):
             self.favorite_button.place_forget()
             self.reset_button.place_forget()
             self.setting_button.place_forget()
-            self.close_button.place_forget()
+            self.close_overlay_button.place_forget()
+            self.exit_button.place_forget()
+
+    def exit(self):
+        self.destroy()
 
     def generate_new_image(self):
         r = sr.Recognizer()
         r.pause_threshold = 1
 
         with sr.Microphone() as source:
-            print("Say something!")
+            print("Start recording...")
             audio = r.listen(source)
         
         try:
             speech = r.recognize_whisper_api(audio, api_key=get_openai_key())
-            print(speech)
+            print("Detected speech: ", speech)
         except sr.RequestError as e:
             print(f"Could not request results from Whisper API: {e}")
 
-        image_uuid = self.image_generator.generate(speech)
-        image_path = os.path.join(os.path.dirname(__file__), '..', 'imgs', f"{image_uuid}.png")
+        try:
+            prompt = speech_to_prompt(speech)
+            print("Generated prompt: ", prompt)
+        except Exception as e:
+            print(f"Could not generate prompt: {e}")
+            prompt = speech
+
+        image_uuid = self.image_manager.generate(prompt)
+        image_path = self.image_manager.uuid_to_path(image_uuid)
         self.set_image(image_path)
+        self.hide_overlay()
+
 
 if __name__ == "__main__":
     app = App()

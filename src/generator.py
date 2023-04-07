@@ -17,20 +17,12 @@ class ImageGenerator:
     def generate(self, prompt: str) -> Image:
         pass
 
-    def save(self, image: Image) -> None:
-        image_uuid = uuid.uuid4()
-        image_path = os.path.join(os.path.dirname(__file__), '..', 'imgs', f"{image_uuid}.png")
-        image.save(image_path, "PNG")
-        return image_uuid
-
-
 class OpenAIImageGenerator(ImageGenerator):
     def __init__(self) -> None:
         pass
     
     def generate(self, prompt: str) -> typing.Any:
-        image = self.get_dalle2_image(prompt)
-        return self.save(image)
+        return self.get_dalle2_image(prompt)
 
     @staticmethod
     def get_url():
