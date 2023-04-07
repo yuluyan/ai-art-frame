@@ -13,7 +13,7 @@ class ImageRecord:
     prompt: str
 
 class ImageManager:
-    def __init__(self, folder: str, generator: ImageGenerator):
+    def __init__(self, folder: str, generator: typing.Optional[ImageGenerator]=None):
         self.folder = folder
         self.generator = generator
         
@@ -34,7 +34,9 @@ class ImageManager:
         with open(self.records_path, 'w') as f:
             json.dump(records, f)
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str) -> ImageRecord:
+        if self.generator is None:
+            raise ValueError("No generator provided for image manager.")
         image = self.generator.generate(prompt)
         image_uuid = str(uuid.uuid4())
         image_path = self.uuid_to_path(image_uuid)
@@ -45,7 +47,7 @@ class ImageManager:
         records.append(dataclasses.asdict(record))
         self._save_records(records)
 
-        return image_uuid
+        return record
 
     def get_all_records(self) -> typing.List[ImageRecord]:
         records = self._read_records()
@@ -67,6 +69,8 @@ class ImageManager:
         else:
             return ImageRecord(**records[-1])
 
+    def get_record_count(self) -> int:
+        return len(self._read_records())
 
 if __name__ == "__main__":
     im = ImageManager(
