@@ -1,118 +1,109 @@
 import tkinter as tk
+from PIL import Image, ImageTk
 import os
+import time
+import threading
+import speech_recognition as sr
 
-import tkinter as tk
+from utils import resize_image, get_openai_key
 
-class MainWindow(tk.Tk):
+
+class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Image Viewer")
-        self.geometry("1920x1080")
 
-        # Create the image canvas
-        self.image_canvas = tk.Canvas(self, width=1920, height=1080)
-        self.image_canvas.pack()
+        self.width = 1920
+        self.height = 1080
 
-        # Draw the image
-        self.image = tk.PhotoImage(file="C:\\Users\\yuluy\\Desktop\\ai-art-frame\\ai-art-frame\\src\\example.png")
-        self.image_canvas.create_image(0, 0, anchor=tk.NW, image=self.image)
+        self.title("AI Art Frame")
+        self.geometry(f"{self.width}x{self.height}")
 
-        # Bind the click event to show the overlay
-        self.image_canvas.bind("<Button-1>", self.show_overlay)
+        self.canvas = tk.Canvas(self, width=self.width, height=self.height)
+        self.canvas.bind("<Button-1>", self.show_overlay)
+        self.canvas.pack(fill="both", expand=True)
+        
+        self.image_buffer = None
+        self.set_image(os.path.join(os.path.dirname(__file__), '..', 'imgs', 'art.png'))
 
-        # Create the overlay frame
-        self.overlay_frame = FadingFrame(self, bg="black", bd=1, relief=tk.RAISED)
-        self.overlay_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        self.overlay_active = False
+        self.overlay_image_buffer = []
+        self.overlay_buffer = []
+        for alpha in range(0, 150, 15):
+            image = Image.new("RGBA", (self.width, self.height), (0, 0, 0, alpha))
+            self.overlay_image_buffer.append(ImageTk.PhotoImage(image))
+            overlay_step = self.canvas.create_image(0, 0, image=self.overlay_image_buffer[-1], anchor="nw")
+            self.canvas.itemconfig(overlay_step, state='hidden')
+            self.overlay_buffer.append(overlay_step)
 
-        # Create the overlay buttons
-        self.favorite_button = tk.Button(self.overlay_frame, text="Favorite", image=self.get_heart_icon(), compound=tk.LEFT)
-        self.favorite_button.pack(side=tk.LEFT, padx=10)
-        self.new_button = tk.Button(self.overlay_frame, text="New", compound=tk.LEFT)
-        self.new_button.pack(side=tk.LEFT, padx=10)
-        self.setting_button = tk.Button(self.overlay_frame, text="Setting", compound=tk.LEFT)
-        self.setting_button.pack(side=tk.LEFT, padx=10)
+        self.favorite_button = tk.Button(self, text="Favorite", bg="white", command=lambda: print("Favorite"))
+        self.reset_button = tk.Button(self, text="Reset", bg="white", command=self.generate_new_image)
+        self.setting_button = tk.Button(self, text="Setting", bg="white", command=lambda: print("Setting"))
+        self.close_button = tk.Button(self, text="x", command=self.hide_overlay,
+                                      borderwidth=0, relief="flat", 
+                                      highlightthickness=0, overrelief="", padx=50, pady=50)
 
-        # Create the close button
-        self.close_button = tk.Button(self.overlay_frame, text="X", font=("Arial", 12), bg="black", fg="white", bd=0, command=self.hide_overlay)
-        self.close_button.place(relx=1.0, rely=0.0, anchor=tk.NE)
+        self.image_generator = None
+    
+    def set_generator(self, generator):
+        self.image_generator = generator
 
-        # Hide the overlay initially
-        self.hide_overlay()
+    def set_image(self, image_path, do_resize=True):
+        image = Image.open(image_path)
+        if do_resize:
+            image = resize_image(image, self.width, self.height)
+        self.image_buffer = ImageTk.PhotoImage(image)
+        self.canvas.create_image(0, 0, image=self.image_buffer, anchor="nw")
 
-    def show_overlay(self, event):
-        # Show the overlay
-        self.overlay_frame.lift()
-        self.overlay_frame.update_idletasks()
-        self.overlay_frame.place_forget()
-        self.overlay_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
-        self.image_canvas.itemconfigure(self.image_canvas.find_all(), state="hidden")
-        self.overlay_frame.update()
-        self.overlay_frame.configure(bg="#000", opacity=0)
-        self.overlay_frame.fade_in(0.5)
+    def fade(self, dir):
+        if dir == "in":
+            for i in range(len(self.overlay_buffer)):
+                if i > 0:
+                    self.canvas.itemconfig(self.overlay_buffer[i - 1], state='hidden')
+                self.canvas.itemconfig(self.overlay_buffer[i], state='normal')
+                self.canvas.update()
+        elif dir == "out":
+            for i in range(len(self.overlay_buffer) - 1, -1, -1):
+                if i < len(self.overlay_buffer) - 1:
+                    self.canvas.itemconfig(self.overlay_buffer[i + 1], state='hidden')
+                self.canvas.itemconfig(self.overlay_buffer[i], state='normal')
+                self.canvas.update()
+
+    def show_overlay(self, event=None):
+        if not self.overlay_active:
+            self.overlay_active = True
+            self.fade("in")
+            self.favorite_button.place(x=860, y=10)
+            self.reset_button.place(x=860, y=50)
+            self.setting_button.place(x=860, y=150)
+            self.close_button.place(x=1800, y=10)
 
     def hide_overlay(self):
-        # Hide the overlay
-        self.overlay_frame.fade_out(0.5, callback=lambda: self.image_canvas.itemconfigure(self.image_canvas.find_all(), state="normal"))
+        if self.overlay_active:
+            self.overlay_active = False
+            self.fade("out")
+            self.favorite_button.place_forget()
+            self.reset_button.place_forget()
+            self.setting_button.place_forget()
+            self.close_button.place_forget()
 
-    def get_heart_icon(self):
-        # Create the heart icon
-        heart_icon = tk.PhotoImage(width=24, height=24)
-        heart_icon.put("#f00", (12, 12))
-        heart_icon.put("#f00", (11, 11))
-        heart_icon.put("#f00", (10, 10))
-        heart_icon.put("#f00", (9, 9))
-        heart_icon.put("#f00", (8, 8))
-        heart_icon.put("#f00", (7, 7))
-        heart_icon.put("#f00", (6, 6))
-        heart_icon.put("#f00", (5, 5))
-        heart_icon.put("#f00", (4, 4))
-        heart_icon.put("#f00", (3, 3))
-        heart_icon.put("#f00", (2, 2))
-        heart_icon.put("#f00", (1, 1))
-        heart_icon.put("#f00", (0, 0))
-        return heart_icon
+    def generate_new_image(self):
+        r = sr.Recognizer()
+        r.pause_threshold = 1
 
-    def get_refresh_icon(self):
-        # Create the refresh icon
-        refresh_icon = tk.PhotoImage(width=24, height=24)
-        refresh_icon.create_polygon(4, 4, 4, 20, 12, 16, 20, 20, 20, 4, fill="#00f")
-        refresh_icon.create_polygon(8, 8, 8, 12, 16, 8, fill="#fff")
-        refresh_icon.create_polygon(16, 16, 16, 12, 8, 16, fill="#fff")
-        return refresh_icon
+        with sr.Microphone() as source:
+            print("Say something!")
+            audio = r.listen(source)
+        
+        try:
+            speech = r.recognize_whisper_api(audio, api_key=get_openai_key())
+            print(speech)
+        except sr.RequestError as e:
+            print(f"Could not request results from Whisper API: {e}")
 
-    def get_gear_icon(self):
-        # Create the gear icon
-        gear_icon = tk.PhotoImage(width=24, height=24)
-        gear_icon.create_arc(4, 4, 20, 20, start=0, extent=270, fill="#aaa", width=2, style=tk.ARC)
-        gear_icon.create_arc(6, 6, 18, 18, start=0, extent=270, fill="#ccc", width=2, style=tk.ARC)
-        gear_icon.create_arc(8, 8, 16, 16, start=0, extent=270, fill="#eee", width=2, style=tk.ARC)
-        gear_icon.create_polygon(14, 12, 18, 12, 16, 14, fill="#000")
-        gear_icon.create_polygon(10, 12, 6, 12, 8, 14, fill="#000")
-        gear_icon.create_polygon(12, 14, 12, 18, 10, 16, fill="#000")
-        return gear_icon
-
-class FadingFrame(tk.Frame):
-    def fade_in(self, duration):
-        self.fade(duration, 0, 1)
-
-    def fade_out(self, duration, callback=None):
-        self.fade(duration, 1, 0, callback=callback)
-
-    def fade(self, duration, start_alpha, end_alpha, callback=None):
-        steps = duration * 10
-        delay = int(duration / steps * 1000)
-        alpha_step = (end_alpha - start_alpha) / steps
-        alpha = start_alpha
-        for i in range(steps):
-            alpha += alpha_step
-            self.configure(opacity=alpha)
-            self.update()
-            self.after(delay)
-        self.configure(opacity=end_alpha)
-        self.update()
-        if callback is not None:
-            callback()
+        image_uuid = self.image_generator.generate(speech)
+        image_path = os.path.join(os.path.dirname(__file__), '..', 'imgs', f"{image_uuid}.png")
+        self.set_image(image_path)
 
 if __name__ == "__main__":
-    app = MainWindow()
+    app = App()
     app.mainloop()

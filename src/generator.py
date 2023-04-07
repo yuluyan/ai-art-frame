@@ -7,6 +7,8 @@ import os
 from io import BytesIO
 from PIL import Image
 
+from utils import get_openai_key
+
 class ImageGenerator:
     def __init__(self) -> None:
         pass
@@ -34,19 +36,12 @@ class OpenAIImageGenerator(ImageGenerator):
     def get_url():
         return "https://api.openai.com/v1/images/generations"
 
-    @staticmethod
-    def get_api_key():
-        file_path = os.path.join(os.path.dirname(__file__), '..', 'key.secret')
-        with open(file_path, 'r') as f:
-            api_key = f.read().strip()
-        return api_key
-
     def get_dalle2_image(self, prompt):
         url = OpenAIImageGenerator.get_url()
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {OpenAIImageGenerator.get_api_key()}"
+            "Authorization": f"Bearer {get_openai_key()}"
         }
 
         data = {
@@ -70,4 +65,4 @@ class OpenAIImageGenerator(ImageGenerator):
 
 if __name__ == "__main__":
     gen = OpenAIImageGenerator()
-    gen.generate("cat")
+    gen.generate("abstract art, art station")
