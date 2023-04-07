@@ -7,7 +7,7 @@ import speech_recognition as sr
 
 from utils import resize_image, get_openai_key
 from image_manager import ImageManager
-from prompt import speech_to_prompt
+from voice import voice_to_prompt
 
 
 class App(tk.Tk):
@@ -100,25 +100,7 @@ class App(tk.Tk):
         self.destroy()
 
     def generate_new_image(self):
-        r = sr.Recognizer()
-        r.pause_threshold = 1
-
-        with sr.Microphone() as source:
-            print("Start recording...")
-            audio = r.listen(source)
-        
-        try:
-            speech = r.recognize_whisper_api(audio, api_key=get_openai_key())
-            print("Detected speech: ", speech)
-        except sr.RequestError as e:
-            print(f"Could not request results from Whisper API: {e}")
-
-        try:
-            prompt = speech_to_prompt(speech)
-            print("Generated prompt: ", prompt)
-        except Exception as e:
-            print(f"Could not generate prompt: {e}")
-            prompt = speech
+        prompt = voice_to_prompt()
 
         image_uuid = self.image_manager.generate(prompt)
         image_path = self.image_manager.uuid_to_path(image_uuid)
