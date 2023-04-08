@@ -33,8 +33,7 @@ class ConfigManager:
         self.configs_path = os.path.join(os.path.dirname(__file__), '..', "configs.json")
         self.configs = self._read_configs()
 
-        if reinitialize:
-            self.initialize_configs()
+        self.initialize_configs(overwrite=reinitialize)
         
     def _read_configs(self) -> typing.List[ConfigGroup]:
         if not os.path.exists(self.configs_path):
@@ -53,7 +52,7 @@ class ConfigManager:
             self.configs = copy.deepcopy(configs)
             self._save_configs()
     
-    def initialize_configs(self) -> None:
+    def initialize_configs(self, overwrite=False) -> None:
         config_group_general = ConfigGroup(
             name="general_configs",
             label="General Settings",
@@ -80,7 +79,7 @@ class ConfigManager:
             config_group_generator,
         ]
         
-        self._initialize_configs(configs, overwrite=True)
+        self._initialize_configs(configs, overwrite=overwrite)
 
     def find_config_group_index(self, group_name: str) -> int:
         for i, config_group in enumerate(self.configs):
