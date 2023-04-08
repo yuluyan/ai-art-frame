@@ -5,6 +5,7 @@ import os
 import typing
 
 from generator import ImageGenerator, OpenAIImageGenerator
+from config_manager import ConfigManager
 
 
 @dataclasses.dataclass
@@ -71,6 +72,12 @@ class ImageManager:
 
     def get_record_count(self) -> int:
         return len(self._read_records())
+
+    def update_generator_config(self, config_manager: ConfigManager) -> None:
+        if self.generator is None:
+            raise ValueError("No generator provided for image manager.")
+        self.generator.configure(config_manager)
+
 
 if __name__ == "__main__":
     im = ImageManager(

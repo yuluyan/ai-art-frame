@@ -7,6 +7,8 @@ import speech_recognition as sr
 from utils import resize_image, get_openai_key
 from image_manager import ImageManager, ImageRecord
 from voice import voice_to_prompt
+from config_manager import ConfigManager
+
 
 ctk.set_appearance_mode("System")  # Modes: system (default), light, dark
 ctk.set_default_color_theme("blue")  # Themes: blue (default), dark-blue, green
@@ -80,11 +82,9 @@ class GalleryItem(ctk.CTkFrame):
         return button
 
     def display(self):
-        print("display" + self.uuid)
         self.display_command(self.uuid)
 
     def delete(self):
-        print("delete" + self.uuid)
         self.delete_command(self.uuid)
 
 
@@ -178,6 +178,7 @@ class App(ctk.CTk):
         self.listen_progressbar = ctk.CTkProgressBar(self, mode="indeterminate", indeterminate_speed=1.5, width=400, height=20, progress_color="#8df0ad")
 
         self.image_manager: ImageManager = None
+        self.config_manager: ConfigManager = None
 
         self.history_frame_width = int(self.width * 0.618)
         self.history_frame_height = self.height - 300
@@ -203,10 +204,20 @@ class App(ctk.CTk):
 
         return button
 
-    def set_image_manager(self, image_manager: ImageManager):
+    def configure_general_configs(self):
+        current_image_uuid = self.config_manager.get_config("current_image")
+        if current_image_uuid:
+            self.set_image(current_image_uuid)
+        else:
+            if last_record := self.image_manager.get_last_record():
+                self.set_image(last_record.uuid)
+            
+    def set_managers(self, image_manager: ImageManager, config_manager: ConfigManager):
         self.image_manager = image_manager
-        if last_record := self.image_manager.get_last_record():
-            self.set_image(last_record.uuid)
+        self.config_manager = config_manager
+        self.image_manager.update_generator_config(self.config_manager)
+        self.configure_general_configs()
+
         self.history_frame = ScrollableGalleryFrame(
             self, 
             self.history_frame_width, 
@@ -245,12 +256,18 @@ class App(ctk.CTk):
 
     def set_image(self, image_uuid, do_resize=True):
         image_path = self.image_manager.uuid_to_path(image_uuid)
-        image = Image.open(image_path)
+        try:
+            image = Image.open(image_path)
+        except Exception as e:
+            print(e)
+            image = Image.new("RGBA", (self.width, self.height), (0, 0, 0, 255))
+            
         if do_resize:
             image = resize_image(image, self.width, self.height)
         self.picture_image_buffer = ImageTk.PhotoImage(image)
         self.canvas.itemconfig(self.picture_buffer, image=self.picture_image_buffer)
         self.image_uuid = image_uuid
+        self.config_manager.set_config("current_image", image_uuid)
 
     def fade(self, dir):
         if dir == "in":
@@ -353,19 +370,13 @@ class App(ctk.CTk):
 
 if __name__ == "__main__":
     import os
-
     from gui import App
-    from generator import OpenAIImageGenerator
+    from generator import OpenAIImageGenerator, LocalStableDiffusionImageGenerator
     from image_manager import ImageManager
 
-    generator = OpenAIImageGenerator()
-    
-    image_manager = ImageManager(
-        os.path.join(os.path.dirname(__file__), '..', 'imgs'), 
-        generator
-    )
+    image_manager = ImageManager(os.path.join(os.path.dirname(__file__), '..', 'imgs'), LocalStableDiffusionImageGenerator())
+    config_manager = ConfigManager()
 
     app = App()
-    app.set_image_manager(image_manager)
-    
+    app.set_managers(image_manager, config_manager)
     app.mainloop()

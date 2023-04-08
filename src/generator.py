@@ -1,5 +1,6 @@
 import abc
 import base64
+import copy
 import requests
 import typing
 import uuid
@@ -9,6 +10,8 @@ from io import BytesIO
 from PIL import Image
 
 from utils import get_openai_key, get_sd_port
+from config_manager import ConfigManager
+
 
 class ImageGenerator:
     def __init__(self) -> None:
@@ -17,10 +20,23 @@ class ImageGenerator:
     @abc.abstractmethod
     def generate(self, prompt: str) -> Image:
         pass
+        
+    def configure(self, config_manager: ConfigManager):
+        overrides = {}
+        for key, _ in self.configs.items():
+            new_value = config_manager.get_config_no_except(key)
+            if new_value is not None:
+                overrides[key] = new_value
+        self.configs.update(overrides)
+
 
 class OpenAIImageGenerator(ImageGenerator):
     def __init__(self) -> None:
-        pass
+        self.configs = {
+            "n": 1,
+            "size": "1024x1024",
+            "response_format": "url"
+        }
     
     def generate(self, prompt: str) -> typing.Any:
         return self.get_dalle2_image(prompt)
@@ -37,12 +53,8 @@ class OpenAIImageGenerator(ImageGenerator):
             "Authorization": f"Bearer {get_openai_key()}"
         }
 
-        data = {
-            "prompt": prompt,
-            "n": 1,
-            "size": "1024x1024",
-            "response_format": "url"
-        }
+        data = copy.deepcopy(self.configs)
+        data["prompt"] = prompt
 
         response = requests.post(url, headers=headers, json=data)
 
@@ -58,7 +70,14 @@ class OpenAIImageGenerator(ImageGenerator):
 
 class LocalStableDiffusionImageGenerator(ImageGenerator):
     def __init__(self) -> None:
-        pass
+        self.configs = {
+            "steps": 40,
+            "cfg_scale": 7,
+            "width": 1280,
+            "height": 720,
+            "sampler_index": "DPM++ SDE Karras",
+            "restore_faces": False
+        }
     
     def generate(self, prompt: str) -> typing.Any:
         return self.get_image(prompt)
@@ -74,15 +93,8 @@ class LocalStableDiffusionImageGenerator(ImageGenerator):
             "Content-Type": "application/json",
         }
 
-        data = {
-            "prompt": prompt,
-            "steps": 40,
-            "cfg_scale": 7,
-            "width": 1280,
-            "height": 720,
-            "sampler_index": "DPM++ SDE Karras",
-            "restore_faces": False
-        }
+        data = copy.deepcopy(self.configs)
+        data["prompt"] = prompt
 
         response = requests.post(url=url, headers=headers, json=data)
 
@@ -96,3 +108,4 @@ class LocalStableDiffusionImageGenerator(ImageGenerator):
 if __name__ == "__main__":
     gen = LocalStableDiffusionImageGenerator()
     gen.generate("abstract art, art station").show()
+    
