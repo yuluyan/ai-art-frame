@@ -1,7 +1,6 @@
 import tkinter as tk
 import customtkinter as ctk
 from PIL import Image, ImageTk
-
 import os
 import speech_recognition as sr
 

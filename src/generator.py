@@ -1,4 +1,5 @@
 import abc
+import base64
 import requests
 import typing
 import uuid
@@ -7,7 +8,7 @@ import os
 from io import BytesIO
 from PIL import Image
 
-from utils import get_openai_key
+from utils import get_openai_key, get_sd_port
 
 class ImageGenerator:
     def __init__(self) -> None:
@@ -55,6 +56,43 @@ class OpenAIImageGenerator(ImageGenerator):
         return image
 
 
+class LocalStableDiffusionImageGenerator(ImageGenerator):
+    def __init__(self) -> None:
+        pass
+    
+    def generate(self, prompt: str) -> typing.Any:
+        return self.get_image(prompt)
+
+    @staticmethod
+    def get_url():
+        return f"http://{get_sd_port()}/sdapi/v1/txt2img"
+
+    def get_image(self, prompt):
+        url = LocalStableDiffusionImageGenerator.get_url()
+
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        data = {
+            "prompt": prompt,
+            "steps": 40,
+            "cfg_scale": 7,
+            "width": 1280,
+            "height": 720,
+            "sampler_index": "DPM++ SDE Karras",
+            "restore_faces": False
+        }
+
+        response = requests.post(url=url, headers=headers, json=data)
+
+        image_raw_data = response.json()['images'][0]
+
+        image = Image.open(BytesIO(base64.b64decode(image_raw_data.split(",", 1)[0])))
+
+        return image
+
+
 if __name__ == "__main__":
-    gen = OpenAIImageGenerator()
-    gen.generate("abstract art, art station")
+    gen = LocalStableDiffusionImageGenerator()
+    gen.generate("abstract art, art station").show()

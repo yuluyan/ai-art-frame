@@ -1,12 +1,12 @@
 import os
 
 from gui import App
-from generator import OpenAIImageGenerator
+from generator import OpenAIImageGenerator, LocalStableDiffusionImageGenerator
 from image_manager import ImageManager
 
 
 def main():
-    generator = OpenAIImageGenerator()
+    generator = LocalStableDiffusionImageGenerator()
     
     image_manager = ImageManager(
         os.path.join(os.path.dirname(__file__), '..', 'imgs'), 
@@ -15,7 +15,7 @@ def main():
 
     app = App()
     app.set_image_manager(image_manager)
-    
+
     app.mainloop()
 
 

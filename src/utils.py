@@ -7,5 +7,11 @@ def get_openai_key():
         api_key = f.read().strip()
     return api_key
 
+def get_sd_port():
+    file_path = os.path.join(os.path.dirname(__file__), '..', 'sdport.secret')
+    with open(file_path, 'r') as f:
+        api_key = f.read().strip()
+    return api_key
+
 def resize_image(image, width, height):
     return image.resize((width, height), Image.ANTIALIAS)
