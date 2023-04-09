@@ -11,6 +11,7 @@ class ConfigItem:
     label: str
     type: str
     value: typing.Any
+    range: typing.Any
     editable: bool = True
 
 @dataclasses.dataclass
@@ -51,13 +52,14 @@ class ConfigManager:
         if overwrite or (not os.path.exists(self.configs_path)):
             self.configs = copy.deepcopy(configs)
             self._save_configs()
-    
+
     def initialize_configs(self, overwrite=False) -> None:
         config_group_general = ConfigGroup(
             name="general_configs",
             label="General Settings",
             items=[
-                ConfigItem("current_image", "Current Image", "str", "", False),
+                ConfigItem("current_image", "Current Image", "str", "", None, editable=False),
+                ConfigItem("do_resize", "Resize to Fit", "bool", True, None),
             ]
         )
 
@@ -65,12 +67,35 @@ class ConfigManager:
             name="stable_diffusion_configs", 
             label="Stable Diffusion Settings", 
             items=[
-                ConfigItem("steps", "Steps", "int", 40, True),
-                ConfigItem("cfg_scale", "CFG", "float", 7.0, True),
-                ConfigItem("width", "Width", "int", 1280, True),
-                ConfigItem("height", "Height", "int", 720, True),
-                ConfigItem("restore_faces", "Restore Faces", "bool", False, True),
-                ConfigItem("sampler_index", "Sampler", "str", "DPM++ SDE Karras", True),
+                ConfigItem("steps", "Steps", "int", 40, (1, 150, 1)),
+                ConfigItem("cfg_scale", "CFG", "float", 7.0, (1.0, 30.0, 0.1)),
+                ConfigItem("width", "Width", "int", 1280, (64, 2048, 64)),
+                ConfigItem("height", "Height", "int", 720, (64, 2048, 64)),
+                ConfigItem("restore_faces", "Restore Faces", "bool", False, None),
+                ConfigItem("sampler_index", "Sampler", "str", "DPM++ SDE Karras", 
+                    [
+                        "Euler a", 
+                        "Euler", 
+                        "LMS", 
+                        "Heun", 
+                        "DPM2", 
+                        "DPM2 a", 
+                        "DPM++ 2S a", 
+                        "DPM++ 2M", 
+                        "DPM++ SDE", 
+                        "DPM fast", 
+                        "DPM adaptive", 
+                        "LMS Karras",
+                        "DPM2 Karras",
+                        "DPM2 a Karras",
+                        "DPM++ 2S a Karras",
+                        "DPM++ 2M Karras", 
+                        "DPM++ SDE Karras",
+                        "DDIM",
+                        "PLMS",
+                        "UniPC",
+                    ]
+                ),
             ]
         )
 
@@ -110,7 +135,7 @@ class ConfigManager:
             self.configs[group_index].items[item_index].value = value
             self._save_configs()
 
-    def set_config(self, item_name: str, value: typing.Any) -> None:
+    def set_config_value(self, item_name: str, value: typing.Any) -> None:
         try:
             self._modify_config_item(item_name, value)
         except ValueError as e:
@@ -118,34 +143,22 @@ class ConfigManager:
 
     def get_all_configs(self) -> typing.List[ConfigGroup]:
         return self.configs
-
-    def get_config(self, item_name) -> typing.Any:
+    
+    def get_config(self, item_name, do_raise=False) -> typing.Optional[ConfigItem]:
         group_index, item_index = self.find_config_item_index(item_name)
 
         if group_index == -1 or item_index == -1:
-            raise ValueError(f"Config item {item_name} not found")
+            if do_raise:
+                raise ValueError(f"Config item {item_name} not found")
+            else:
+                print(f"Error getting config item {item_name}: {e}. Returning None.")
+                return None
 
-        return self.configs[group_index].items[item_index].value
+        return self.configs[group_index].items[item_index]
 
-    def get_config_no_except(self, item_name) -> typing.Any:
-        try:
-            return self.get_config(item_name)
-        except ValueError as e:
-            print(f"Error getting config item {item_name}: {e}. Returning None.")
-            return None
+    def get_config_value(self, item_name, do_raise=False) -> typing.Any:
+        return self.get_config(item_name, do_raise=do_raise).value
+
 
 if __name__ == "__main__":
     cm = ConfigManager(reinitialize=True)
-    
-    # config = cm.get_all_configs()
-    # print(config)
-    # print(cm.get_config("cfg_scale"))
-
-    # cm.set_config("cfg_scale", 8.0)
-    # cm.set_config("restore_faces", False)
-    # cm.set_config("sampler_index", "Eular")
-
-    # config = cm.get_all_configs()
-    # print(config)
-    # print(cm.get_config("cfg_scale"))
-    # print(cm.get_config_no_except("cfg_xscale"))

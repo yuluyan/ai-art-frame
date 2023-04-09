@@ -9,83 +9,11 @@ from image_manager import ImageManager, ImageRecord
 from voice import voice_to_prompt
 from config_manager import ConfigManager
 
+from gui_components.history import GalleryItem
+from gui_components.setting import SettingGroupLabel, SettingItem
 
 ctk.set_appearance_mode("System")  # Modes: system (default), light, dark
 ctk.set_default_color_theme("blue")  # Themes: blue (default), dark-blue, green
-
-
-class GalleryItem(ctk.CTkFrame):
-    def __init__(self, master, image_width, image_height, uuid: str, prompt: str, path, display_command, delete_command, **kwargs):
-        super().__init__(master, **kwargs)
-        self.image_height_percent = 70
-        self.label_wrap_length = 90
-
-        self.configure(width=image_width, height=int(image_height / (self.image_height_percent / 100.0)), fg_color="#141414")
-
-        self.grid_rowconfigure(0, weight=15)
-        self.grid_rowconfigure(1, weight=self.image_height_percent)
-        self.grid_rowconfigure(2, weight=15)
-        self.grid_columnconfigure(0, weight=4)
-        self.grid_columnconfigure(1, weight=1)
-
-        self.uuid = uuid
-
-        display_text = prompt
-        for char in ["\n", "`", "'"]:
-            display_text = display_text.replace(char, " ")
-        if len(display_text) > self.label_wrap_length:
-            display_text = display_text[:self.label_wrap_length - 3].strip() + "..."
-
-        self.label = ctk.CTkLabel(
-            self, 
-            text=display_text, 
-            justify="center", 
-            wraplength=image_width - 20, 
-            pady=2, width=image_width, 
-            height=40, 
-            fg_color="#141414", 
-            text_color="#fff7e3", 
-            font=("Consolas", 12, "bold")
-        )
-        self.image = ctk.CTkImage(Image.open(path), size=(image_width, image_height))
-
-        self.display_command = display_command
-        self.delete_command = delete_command
-        self.display_button = self.overlay_button("display", "#8df0ad", "#141414", command=self.display)
-        self.delete_button = self.overlay_button("del", "#ff5447", "#141414", command=self.delete)
-        
-        self.label.grid(row=0, column=0, columnspan=2, sticky="nsew")
-
-        self.image_label = ctk.CTkLabel(self, image=self.image, text="")
-        self.image_label.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(10, 10))
-
-        self.display_button.grid(row=2, column=0, sticky="nsew")
-        self.delete_button.grid(row=2, column=1, sticky="nsew")
-
-    def overlay_button(self, text, bc, fc, command):
-        text = " ".join([c for c in text.upper()])
-
-        def _button_enter(e):
-            button["background"] = bc
-            button["foreground"] = fc
-
-        def _button_leave(e):
-            button["background"] = fc
-            button["foreground"] = bc
-
-        font = tk.font.Font(size=12, family="Consolas", weight="bold")
-        button = tk.Button(self, text=text, font=font, fg=bc, bg=fc, border=0, activeforeground=fc, activebackground=bc, command=command)
-
-        button.bind("<Enter>", _button_enter)
-        button.bind("<Leave>", _button_leave)
-
-        return button
-
-    def display(self):
-        self.display_command(self.uuid)
-
-    def delete(self):
-        self.delete_command(self.uuid)
 
 
 class ScrollableGalleryFrame(ctk.CTkScrollableFrame):
@@ -135,6 +63,45 @@ class ScrollableGalleryFrame(ctk.CTkScrollableFrame):
             it.grid(row=target_row, column=target_col, columnspan=1, pady=(25, 25), padx=(15, 15))
 
 
+class ScrollableSettingFrame(ctk.CTkScrollableFrame):
+    def __init__(self, master, width: int, height: int, config_manager: ConfigManager, **kwargs):
+        super().__init__(master, **kwargs)
+        self.configure(width=width, height=height, fg_color="#141414", corner_radius=0, border_width=0)
+
+        self.width = width
+        self.height = height
+
+        self.config_manager = config_manager
+
+        self.has_change = False
+
+        self.setting_items = {}
+        self.update_setting()
+
+    def _on_change(self):
+        self.has_change = True
+
+    def update_setting(self):
+        self.setting_items = {}
+        row_id = 0
+        for config_group in self.config_manager.get_all_configs():
+            setting_group_label = SettingGroupLabel(self, self.width, 50, config_group.label)
+            setting_group_label.grid(row=row_id, column=0, pady=(35, 0))
+            row_id += 1
+            for config in config_group.items:
+                self.setting_items[config.name] = SettingItem(self, self.width, 50, config, command=self._on_change)
+                self.setting_items[config.name].set(config.value)
+                self.setting_items[config.name].grid(row=row_id, column=0)
+                row_id += 1
+
+    def save_setting(self):
+        if self.has_change:
+            for key, item in self.setting_items.items():
+                self.config_manager.set_config_value(key, item.get())
+            self.has_change = False
+
+
+
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -152,7 +119,7 @@ class App(ctk.CTk):
         self.canvas.pack(fill="both", expand=True)
         
         self.picture_image_buffer = ImageTk.PhotoImage(Image.new("RGBA", (self.width, self.height), (0, 0, 0, 255)))
-        self.picture_buffer = self.canvas.create_image(0, 0, image=self.picture_image_buffer, anchor="nw")
+        self.picture_buffer = self.canvas.create_image(self.width // 2, self.height // 2, image=self.picture_image_buffer, anchor=tk.CENTER)
 
         self.overlay_active = False
         self.overlay_image_buffer = []
@@ -164,11 +131,12 @@ class App(ctk.CTk):
             self.canvas.itemconfig(overlay_step, state='hidden')
             self.overlay_buffer.append(overlay_step)
         self.image_uuid = None
-
+        self.do_resize = True
+        
         self.menu_frame = tk.Frame(self, bg="#141414")
         self.reset_button = self.overlay_button("new", "#8df0ad", "#141414", command=self.generate_new_image)
         self.history_button = self.overlay_button("history", "#76b5c5", "#141414", command=self.show_history_frame)
-        self.setting_button = self.overlay_button("setting", "#ffcc66", "#141414", command=lambda: print("Setting"))
+        self.setting_button = self.overlay_button("setting", "#ffcc66", "#141414", command=self.show_setting_frame)
         self.close_overlay_button = self.overlay_button("close", "#b3b3b3", "#141414", command=self.hide_overlay)
         self.exit_button = self.overlay_button("exit", "#ff5447", "#141414", command=self.exit)
         
@@ -184,6 +152,14 @@ class App(ctk.CTk):
         self.history_frame_height = self.height - 300
         self.history_frame = None
         self.history_close_button = self.overlay_button("close", "#b3b3b3", "#141414", command=self.hide_history_frame)
+
+        self.setting_frame_width = 760
+        self.setting_frame_height = 600
+        self.setting_frame = None
+        self.setting_changed = tk.BooleanVar(value=False)
+        self.setting_save_button = self.overlay_button("save", "#8df0ad", "#141414", command=self.save_setting)
+        self.setting_close_button = self.overlay_button("cancel", "#ff5447", "#141414", command=self.hide_setting_frame)
+
 
     def overlay_button(self, text, bc, fc, command):
         text = " ".join([c for c in text.upper()])
@@ -205,13 +181,17 @@ class App(ctk.CTk):
         return button
 
     def configure_general_configs(self):
-        current_image_uuid = self.config_manager.get_config("current_image")
+        do_resize = self.config_manager.get_config_value("do_resize", do_raise=False)
+        if do_resize is not None:
+            self.do_resize = do_resize
+
+        current_image_uuid = self.config_manager.get_config_value("current_image", do_raise=False)
         if current_image_uuid:
             self.set_image(current_image_uuid)
         else:
             if last_record := self.image_manager.get_last_record():
                 self.set_image(last_record.uuid)
-            
+
     def set_managers(self, image_manager: ImageManager, config_manager: ConfigManager):
         self.image_manager = image_manager
         self.config_manager = config_manager
@@ -230,6 +210,13 @@ class App(ctk.CTk):
             label_fg_color="#141414",
             border_width=0,
             corner_radius=0,
+        )
+
+        self.setting_frame = ScrollableSettingFrame(
+            self, 
+            self.setting_frame_width, 
+            self.setting_frame_height, 
+            self.config_manager
         )
     
     def gallary_display_command(self, uuid):
@@ -254,20 +241,20 @@ class App(ctk.CTk):
         self.canvas.itemconfig(self.picture_buffer, image=self.picture_image_buffer)
         self.image_uuid = None
 
-    def set_image(self, image_uuid, do_resize=True):
+    def set_image(self, image_uuid):
         image_path = self.image_manager.uuid_to_path(image_uuid)
         try:
             image = Image.open(image_path)
         except Exception as e:
             print(e)
             image = Image.new("RGBA", (self.width, self.height), (0, 0, 0, 255))
-            
-        if do_resize:
+
+        if self.do_resize:
             image = resize_image(image, self.width, self.height)
         self.picture_image_buffer = ImageTk.PhotoImage(image)
         self.canvas.itemconfig(self.picture_buffer, image=self.picture_image_buffer)
         self.image_uuid = image_uuid
-        self.config_manager.set_config("current_image", image_uuid)
+        self.config_manager.set_config_value("current_image", image_uuid)
 
     def fade(self, dir):
         if dir == "in":
@@ -367,10 +354,30 @@ class App(ctk.CTk):
         self.history_close_button.place_forget()
         self.show_menu()
         
+    def show_setting_frame(self):
+        yoffset = 50
+        border_offset = 4
+        self.hide_menu()
+        self.setting_frame.update_setting()
+        self.setting_frame.place(relx=0.5, y=self.height // 2 - yoffset, anchor=tk.CENTER)
+        self.setting_save_button.place(relx=0.5, y=self.setting_frame_height // 2 + self.height // 2 - yoffset + 30, anchor=tk.E, width=self.setting_frame_width // 2 + border_offset * 2, height=60)
+        self.setting_close_button.place(relx=0.5, y=self.setting_frame_height // 2 + self.height // 2 - yoffset + 30, anchor=tk.W, width=self.setting_frame_width // 2 + border_offset * 2, height=60)
+    
+    def hide_setting_frame(self):
+        self.setting_frame.place_forget()
+        self.setting_save_button.place_forget()
+        self.setting_close_button.place_forget()
+        self.show_menu()
+
+    def save_setting(self):
+        self.setting_frame.save_setting()
+        self.image_manager.update_generator_config(self.config_manager)
+        self.configure_general_configs()
+        self.hide_setting_frame()
+
 
 if __name__ == "__main__":
     import os
-    from gui import App
     from generator import OpenAIImageGenerator, LocalStableDiffusionImageGenerator
     from image_manager import ImageManager
 

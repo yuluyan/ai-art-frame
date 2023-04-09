@@ -24,7 +24,7 @@ class ImageGenerator:
     def configure(self, config_manager: ConfigManager):
         overrides = {}
         for key, _ in self.configs.items():
-            new_value = config_manager.get_config_no_except(key)
+            new_value = config_manager.get_config_value(key)
             if new_value is not None:
                 overrides[key] = new_value
         self.configs.update(overrides)
