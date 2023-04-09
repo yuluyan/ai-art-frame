@@ -69,8 +69,8 @@ class ConfigManager:
             items=[
                 ConfigItem("steps", "Steps", "int", 40, (1, 150, 1)),
                 ConfigItem("cfg_scale", "CFG", "float", 7.0, (1.0, 30.0, 0.1)),
-                ConfigItem("width", "Width", "int", 1280, (64, 2048, 64)),
-                ConfigItem("height", "Height", "int", 720, (64, 2048, 64)),
+                ConfigItem("width", "Width", "int", 1280, (64, 2048, 16)),
+                ConfigItem("height", "Height", "int", 720, (64, 2048, 16)),
                 ConfigItem("restore_faces", "Restore Faces", "bool", False, None),
                 ConfigItem("sampler_index", "Sampler", "str", "DPM++ SDE Karras", 
                     [
