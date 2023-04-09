@@ -5,9 +5,6 @@ import customtkinter as ctk
 
 from gui_components.general import BlockButton
 
-ctk.set_appearance_mode("System")
-ctk.set_default_color_theme("blue")
-
 
 class GalleryItem(ctk.CTkFrame):
     def __init__(self, master, image_width, image_height, uuid: str, prompt: str, path, display_command, delete_command, **kwargs):

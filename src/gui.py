@@ -13,9 +13,7 @@ from gui_components.general import BlockButton
 from gui_components.history import GalleryItem
 from gui_components.setting import SettingGroupLabel, SettingItem
 
-ctk.set_appearance_mode("dark")  # Modes: system (default), light, dark
-ctk.set_default_color_theme("blue")  # Themes: blue (default), dark-blue, green
-
+ctk.set_appearance_mode("dark")
 
 class ScrollableGalleryFrame(ctk.CTkScrollableFrame):
     def __init__(self, master, width, height, image_manager, display_command=None, delete_command=None, **kwargs):
@@ -354,6 +352,8 @@ class App(ctk.CTk):
         self.image_manager.update_generator_config(self.config_manager)
         self.configure_general_configs()
         self.hide_setting_frame()
+        self.hide_menu()
+        self.hide_overlay()
 
 
 if __name__ == "__main__":

@@ -4,10 +4,6 @@ import tkinter as tk
 import customtkinter as ctk
 
 
-ctk.set_appearance_mode("System")
-ctk.set_default_color_theme("blue")
-
-
 class BaseSettingInput(ctk.CTkFrame):
     def __init__(self, master, width: int, height: int, **kwargs):
         super().__init__(master, **kwargs)
