@@ -179,7 +179,7 @@ class ReadonlyInput(BaseSettingInput):
             self, 
             textvariable=self.variable, 
             state="disabled", 
-            width=250,
+            width=350,
             height=35,
             font=("Consolas", 15, "bold"), 
             text_color="#fff7e3", 

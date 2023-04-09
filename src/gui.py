@@ -9,10 +9,11 @@ from image_manager import ImageManager, ImageRecord
 from voice import voice_to_prompt
 from config_manager import ConfigManager
 
+from gui_components.general import BlockButton
 from gui_components.history import GalleryItem
 from gui_components.setting import SettingGroupLabel, SettingItem
 
-ctk.set_appearance_mode("System")  # Modes: system (default), light, dark
+ctk.set_appearance_mode("dark")  # Modes: system (default), light, dark
 ctk.set_default_color_theme("blue")  # Themes: blue (default), dark-blue, green
 
 
@@ -101,20 +102,19 @@ class ScrollableSettingFrame(ctk.CTkScrollableFrame):
             self.has_change = False
 
 
-
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.width = 1920
-        self.height = 1080
+        self.width, self.height = 1920, 1080
 
         # self.attributes("-fullscreen", True)
         self.title("AI Art Frame")
         self.geometry(f"{self.width}x{self.height}")
         self.resizable(False, False)
+        self.iconbitmap(os.path.join(os.path.dirname(__file__), '..', 'icon.ico'))
 
-        self.canvas = tk.Canvas(self, width=self.width, height=self.height)
+        self.canvas = tk.Canvas(self, width=self.width, height=self.height, highlightthickness=0)
         self.canvas.bind("<Button-1>", self.show_overlay)
         self.canvas.pack(fill="both", expand=True)
         
@@ -134,11 +134,11 @@ class App(ctk.CTk):
         self.do_resize = True
         
         self.menu_frame = tk.Frame(self, bg="#141414")
-        self.reset_button = self.overlay_button("new", "#8df0ad", "#141414", command=self.generate_new_image)
-        self.history_button = self.overlay_button("history", "#76b5c5", "#141414", command=self.show_history_frame)
-        self.setting_button = self.overlay_button("setting", "#ffcc66", "#141414", command=self.show_setting_frame)
-        self.close_overlay_button = self.overlay_button("close", "#b3b3b3", "#141414", command=self.hide_overlay)
-        self.exit_button = self.overlay_button("exit", "#ff5447", "#141414", command=self.exit)
+        self.reset_button = BlockButton(self, "new", "#8df0ad", 15, command=self.generate_new_image)
+        self.history_button = BlockButton(self, "history", "#76b5c5", 15, command=self.show_history_frame)
+        self.setting_button = BlockButton(self, "setting", "#ffcc66", 15, command=self.show_setting_frame)
+        self.close_overlay_button = BlockButton(self, "close", "#b3b3b3", 15, command=self.hide_overlay)
+        self.exit_button = BlockButton(self, "exit", "#ff5447", 15, command=self.exit)
         
         self.listen_frame = tk.Frame(self, bg="#141414")
         self.listen_text =  tk.StringVar()
@@ -151,34 +151,14 @@ class App(ctk.CTk):
         self.history_frame_width = int(self.width * 0.618)
         self.history_frame_height = self.height - 300
         self.history_frame = None
-        self.history_close_button = self.overlay_button("close", "#b3b3b3", "#141414", command=self.hide_history_frame)
+        self.history_close_button = BlockButton(self, "close", "#b3b3b3", 15, command=self.hide_history_frame)
 
         self.setting_frame_width = 760
         self.setting_frame_height = 600
         self.setting_frame = None
         self.setting_changed = tk.BooleanVar(value=False)
-        self.setting_save_button = self.overlay_button("save", "#8df0ad", "#141414", command=self.save_setting)
-        self.setting_close_button = self.overlay_button("cancel", "#ff5447", "#141414", command=self.hide_setting_frame)
-
-
-    def overlay_button(self, text, bc, fc, command):
-        text = " ".join([c for c in text.upper()])
-
-        def _button_enter(e):
-            button["background"] = bc
-            button["foreground"] = fc
-
-        def _button_leave(e):
-            button["background"] = fc
-            button["foreground"] = bc
-
-        font = tk.font.Font(size=15, family="Consolas", weight="bold")
-        button = tk.Button(self, text=text, font=font, fg=bc, bg=fc, border=0, activeforeground=fc, activebackground=bc, command=command)
-
-        button.bind("<Enter>", _button_enter)
-        button.bind("<Leave>", _button_leave)
-
-        return button
+        self.setting_save_button = BlockButton(self, "save", "#8df0ad", 15, command=self.save_setting)
+        self.setting_close_button = BlockButton(self, "cancel", "#ff5447", 15, command=self.hide_setting_frame)
 
     def configure_general_configs(self):
         do_resize = self.config_manager.get_config_value("do_resize", do_raise=False)

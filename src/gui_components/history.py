@@ -3,6 +3,7 @@ from PIL import Image
 import tkinter as tk
 import customtkinter as ctk
 
+from gui_components.general import BlockButton
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
@@ -45,8 +46,8 @@ class GalleryItem(ctk.CTkFrame):
 
         self.display_command = display_command
         self.delete_command = delete_command
-        self.display_button = self.overlay_button("display", "#8df0ad", "#141414", command=self.display)
-        self.delete_button = self.overlay_button("del", "#ff5447", "#141414", command=self.delete)
+        self.display_button = BlockButton(self, "display", "#8df0ad", 12, command=self.display)
+        self.delete_button = BlockButton(self, "del", "#ff5447", 12, command=self.delete)
         
         self.label.grid(row=0, column=0, columnspan=2, sticky="nsew")
 
@@ -55,25 +56,6 @@ class GalleryItem(ctk.CTkFrame):
 
         self.display_button.grid(row=2, column=0, sticky="nsew")
         self.delete_button.grid(row=2, column=1, sticky="nsew")
-
-    def overlay_button(self, text, bc, fc, command):
-        text = " ".join([c for c in text.upper()])
-
-        def _button_enter(e):
-            button["background"] = bc
-            button["foreground"] = fc
-
-        def _button_leave(e):
-            button["background"] = fc
-            button["foreground"] = bc
-
-        font = tk.font.Font(size=12, family="Consolas", weight="bold")
-        button = tk.Button(self, text=text, font=font, fg=bc, bg=fc, border=0, activeforeground=fc, activebackground=bc, command=command)
-
-        button.bind("<Enter>", _button_enter)
-        button.bind("<Leave>", _button_leave)
-
-        return button
 
     def display(self):
         self.display_command(self.uuid)
