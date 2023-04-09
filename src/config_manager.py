@@ -151,7 +151,7 @@ class ConfigManager:
             if do_raise:
                 raise ValueError(f"Config item {item_name} not found")
             else:
-                print(f"Error getting config item {item_name}: {e}. Returning None.")
+                print(f"Error getting config item {item_name}. Returning None.")
                 return None
 
         return self.configs[group_index].items[item_index]
