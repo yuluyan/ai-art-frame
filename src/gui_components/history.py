@@ -10,7 +10,7 @@ class GalleryItem(ctk.CTkFrame):
     def __init__(self, master, image_width, image_height, uuid: str, prompt: str, path, display_command, delete_command, **kwargs):
         super().__init__(master, **kwargs)
         self.image_height_percent = 70
-        self.label_wrap_length = 90
+        self.label_wrap_length = 80
 
         self.configure(width=image_width, height=int(image_height / (self.image_height_percent / 100.0)), fg_color="#141414")
 
@@ -25,8 +25,10 @@ class GalleryItem(ctk.CTkFrame):
         display_text = prompt
         for char in ["\n", "`", "'"]:
             display_text = display_text.replace(char, " ")
+        display_text = display_text.strip(",.:;!?").lower()
         if len(display_text) > self.label_wrap_length:
-            display_text = display_text[:self.label_wrap_length - 3].strip() + "..."
+            display_text = display_text[:self.label_wrap_length]
+            display_text = " ".join(display_text.split(" ")[:-1]) + "..."
 
         self.label = ctk.CTkLabel(
             self, 

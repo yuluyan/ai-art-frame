@@ -60,6 +60,7 @@ class ConfigManager:
             items=[
                 ConfigItem("current_image", "Current Image", "str", "", None, editable=False),
                 ConfigItem("do_resize", "Resize to Fit", "bool", True, None),
+                ConfigItem("enable_chatgpt", "Enable ChatGPT Prompt", "bool", True, None),
             ]
         )
 
@@ -67,12 +68,20 @@ class ConfigManager:
             name="stable_diffusion_configs", 
             label="Stable Diffusion Settings", 
             items=[
-                ConfigItem("steps", "Steps", "int", 40, (1, 150, 1)),
+                ConfigItem("model", "Model", "str", "stable_diffusion-v1.5", 
+                    [
+                        "stable_diffusion-v1.5",
+                        "aom-v3a1b",
+                        "chillout_mix",
+                        "urpm-v13",
+                    ]
+                ),
+                ConfigItem("steps", "Steps", "int", 25, (1, 150, 1)),
                 ConfigItem("cfg_scale", "CFG", "float", 7.0, (1.0, 30.0, 0.1)),
-                ConfigItem("width", "Width", "int", 1280, (64, 2048, 16)),
-                ConfigItem("height", "Height", "int", 720, (64, 2048, 16)),
+                ConfigItem("width", "Width", "int", 512, (64, 2048, 16)),
+                ConfigItem("height", "Height", "int", 512, (64, 2048, 16)),
                 ConfigItem("restore_faces", "Restore Faces", "bool", False, None),
-                ConfigItem("sampler_index", "Sampler", "str", "DPM++ SDE Karras", 
+                ConfigItem("sampler_name", "Sampler", "str", "DPM++ SDE Karras", 
                     [
                         "Euler a", 
                         "Euler", 
@@ -96,6 +105,34 @@ class ConfigManager:
                         "UniPC",
                     ]
                 ),
+                ConfigItem("enable_hr", "Hyper Resolution", "bool", True, None),
+                ConfigItem("denoising_strength", "Denoise Strength", "float", 0.7, (0.0, 1.0, 0.01)),
+                # ConfigItem("firstphase_width", "First Phase Width", "int", 720, (64, 2048, 16)),
+                # ConfigItem("firstphase_height", "First Phase Height", "int", 720, (64, 2048, 16)),
+                # ConfigItem("hr_scale", "Height", "int", 720, (64, 2048, 16)),
+                ConfigItem("hr_upscaler", "Upscaler", "str", "ESRGAN_4x", 
+                    [
+                        "Latent",
+                        "Latent (antialiased)",
+                        "Latent (bicubic)",
+                        "Latent (bicubic antialiased)",
+                        "Latent (nearest)",
+                        "Latent (nearest-exact)",
+                        "None",
+                        "Lanczos",
+                        "Nearest",
+                        "ESRGAN_4x",
+                        "LDSR",
+                        "R-ESRGAN 4x+",
+                        "R-ESRGAN_4x+ Anime6B",
+                        "ScuNET GAN",
+                        "ScuNET PSNR",
+                        "SwinIR 4x",
+                    ]
+                ),
+                ConfigItem("hr_second_pass_steps", "Second Pass Steps", "int", 0, (0, 150, 1)),
+                ConfigItem("hr_resize_x", "Hyper Res Width", "int", 720, (64, 2048, 16)),
+                ConfigItem("hr_resize_y", "Hyper Res Height", "int", 832, (64, 2048, 16)),
             ]
         )
 

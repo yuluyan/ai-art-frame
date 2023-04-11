@@ -29,6 +29,10 @@ class ImageGenerator:
                 overrides[key] = new_value
         self.configs.update(overrides)
 
+    @abc.abstractmethod
+    def get_model(self) -> str:
+        pass
+
 
 class OpenAIImageGenerator(ImageGenerator):
     def __init__(self) -> None:
@@ -67,17 +71,26 @@ class OpenAIImageGenerator(ImageGenerator):
 
         return image
 
+    def get_model(self):
+        return "DALL-E 2.0"
+
 
 class LocalStableDiffusionImageGenerator(ImageGenerator):
     def __init__(self) -> None:
         self.configs = {
-            "steps": 40,
+            "steps": 25,
             "cfg_scale": 7,
-            "width": 1280,
-            "height": 720,
-            "sampler_index": "DPM++ SDE Karras",
-            "restore_faces": False
+            "width": 512,
+            "height": 512,
+            "sampler_name": "DPM++ SDE Karras",
+            "enable_hr": False,
+            "denoising_strength": 0.7,
+            "hr_upscaler": "ESRGAN_4x",
+            "hr_second_pass_steps": 0,
+            "hr_resize_x": 720,
+            "hr_resize_y": 832,
         }
+        self.model_mame = ""
     
     def generate(self, prompt: str) -> typing.Any:
         return self.get_image(prompt)
@@ -104,8 +117,44 @@ class LocalStableDiffusionImageGenerator(ImageGenerator):
 
         return image
 
+    @staticmethod
+    def get_option_url():
+        return f"http://{get_sd_port()}/sdapi/v1/options"
+
+    def switch_model(self, model_name):
+        url = LocalStableDiffusionImageGenerator.get_option_url()
+
+        options = requests.get(url=url).json()
+        if model_name in options.get("sd_model_checkpoint", ""):
+            self.model_mame = model_name
+            return
+        
+        options = {
+            "sd_model_checkpoint": model_name,
+            "ldsr_cached": None,
+            "sd_lora": None
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        response = requests.post(url=url, headers=headers, json=options)
+        if response.status_code != 200:
+            raise Exception(f"Failed to switch model: {response.json()}")
+
+        self.model_mame = model_name
+
+    def configure(self, config_manager: ConfigManager):
+        super().configure(config_manager)
+        self.switch_model(config_manager.get_config_value("model"))
+
+    def get_model(self):
+        return self.model_mame
+
 
 if __name__ == "__main__":
     gen = LocalStableDiffusionImageGenerator()
-    gen.generate("abstract art, art station").show()
+    # gen.generate("abstract art, art station").show()
+    gen.switch_model("stable_diffusion-v1.5")
     

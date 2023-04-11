@@ -3,7 +3,7 @@ import speech_recognition as sr
 from utils import get_openai_key
 from prompt import speech_to_prompt
 
-def voice_to_prompt(record_start_callback=None, record_end_callback=None, verbose_callback=None):
+def voice_to_prompt(record_start_callback=None, record_end_callback=None, verbose_callback=None, enable_chatgpt=True):
     r = sr.Recognizer()
     r.pause_threshold = 1
 
@@ -29,17 +29,25 @@ def voice_to_prompt(record_start_callback=None, record_end_callback=None, verbos
     except sr.RequestError as e:
         _verbose_callback(f"Could not request results from Whisper API: {e}")
 
-    speech = speech.lower()
-    if "verbose" in speech:
+    speech = speech.lower().strip(",.?!;:")
+
+    if "title" in speech:
+        speech_splited = speech.split("title")
+        speech = " ".join(speech_splited[:-1]).strip(",.?!;:")
+        title = speech_splited[-1].strip(",.?!;:")
+    else:
+        title = speech
+
+    if "verbose" in speech or not enable_chatgpt:
         speech = speech.replace("verbose", "").strip()
         _verbose_callback(f"Verbose mode: {speech}")
-        return speech
+        return title, speech
 
     try:
         prompt = speech_to_prompt(speech)
-        _verbose_callback(f"Generated prompt: {prompt}")
+        _verbose_callback(f"Title: {title}\nGenerated prompt: {prompt}")
     except Exception as e:
         _verbose_callback(f"Could not generate prompt: {e}")
         prompt = speech
     
-    return prompt
+    return title, prompt

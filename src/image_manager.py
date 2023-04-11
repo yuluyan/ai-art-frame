@@ -1,4 +1,5 @@
 import dataclasses
+import datetime
 import json
 import uuid
 import os
@@ -6,12 +7,16 @@ import typing
 
 from generator import ImageGenerator, OpenAIImageGenerator
 from config_manager import ConfigManager
+from utils import date_serializer, date_deserializer
 
 
 @dataclasses.dataclass
 class ImageRecord:
     uuid: str
     prompt: str
+    title: typing.Optional[str] = None
+    date: typing.Optional[datetime.date] = None
+    model: typing.Optional[str] = None
 
 class ImageManager:
     def __init__(self, folder: str, generator: typing.Optional[ImageGenerator]=None):
@@ -28,14 +33,14 @@ class ImageManager:
             return []
         else:
             with open(self.records_path, 'r') as f:
-                records = json.load(f)
+                records = json.load(f, object_hook=date_deserializer)
             return records
 
     def _save_records(self, records: typing.List[ImageRecord]) -> None:
         with open(self.records_path, 'w') as f:
-            json.dump(records, f)
+            json.dump(records, f, indent=2, default=date_serializer)
 
-    def generate(self, prompt: str) -> ImageRecord:
+    def generate(self, title: str, prompt: str) -> ImageRecord:
         if self.generator is None:
             raise ValueError("No generator provided for image manager.")
         image = self.generator.generate(prompt)
@@ -43,7 +48,7 @@ class ImageManager:
         image_path = self.uuid_to_path(image_uuid)
         image.save(image_path, "PNG")
 
-        record = ImageRecord(image_uuid, prompt)
+        record = ImageRecord(image_uuid, prompt, title, datetime.date.today(), self.generator.get_model())
         records = self._read_records()
         records.append(dataclasses.asdict(record))
         self._save_records(records)
@@ -78,6 +83,12 @@ class ImageManager:
             raise ValueError("No generator provided for image manager.")
         self.generator.configure(config_manager)
 
+    def get_record(self, uuid: str) -> typing.Optional[ImageRecord]:
+        records = self._read_records()
+        for record in records:
+            if record["uuid"] == uuid:
+                return ImageRecord(**record)
+        return None
 
 if __name__ == "__main__":
     im = ImageManager(
@@ -89,4 +100,3 @@ if __name__ == "__main__":
     # im.generate("Trees, nature, forest")
 
     print(im.get_all_records())
-    print(im.delete_record("ed919b32-8f0d-46cf-9023-c1873ad26f7b"))

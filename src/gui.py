@@ -1,3 +1,4 @@
+import datetime
 import tkinter as tk
 import customtkinter as ctk
 from PIL import Image, ImageTk
@@ -16,9 +17,12 @@ from gui_components.setting import SettingGroupLabel, SettingItem
 ctk.set_appearance_mode("dark")
 
 class ScrollableGalleryFrame(ctk.CTkScrollableFrame):
-    def __init__(self, master, width, height, image_manager, display_command=None, delete_command=None, **kwargs):
+    def __init__(self, master, width, height, aspect_ratio, image_manager, display_command=None, delete_command=None, **kwargs):
         super().__init__(master, **kwargs)
 
+        self.width = width
+        self.height = height
+        self.aspect_ratio = aspect_ratio
         self.configure(width=width, height=height, fg_color="#141414")
 
         self.grid_columnconfigure(0, weight=1)
@@ -36,8 +40,8 @@ class ScrollableGalleryFrame(ctk.CTkScrollableFrame):
     def add_item(self, record):
         item = GalleryItem(
             self, 
-            192*2, 
-            108*2, 
+            self.width / 3 - 30, 
+            (self.width / 3 - 30) * self.aspect_ratio, 
             record.uuid, 
             record.prompt, 
             self.image_manager.uuid_to_path(record.uuid), 
@@ -104,7 +108,13 @@ class App(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.width, self.height = 1920, 1080
+        self.width, self.height = 720, 1280
+        # self.width, self.height = 1920, 1080
+        
+        self.header_height = int(self.height * (1 - 0.65) * 0.4)
+        self.footer_height = int(self.height * (1 - 0.65) * 0.6)
+
+        self.image_height = self.height - self.header_height - self.footer_height
 
         # self.attributes("-fullscreen", True)
         self.title("AI Art Frame")
@@ -114,22 +124,43 @@ class App(ctk.CTk):
 
         self.canvas = tk.Canvas(self, width=self.width, height=self.height, highlightthickness=0)
         self.canvas.bind("<Button-1>", self.show_overlay)
-        self.canvas.pack(fill="both", expand=True)
-        
-        self.picture_image_buffer = ImageTk.PhotoImage(Image.new("RGBA", (self.width, self.height), (0, 0, 0, 255)))
-        self.picture_buffer = self.canvas.create_image(self.width // 2, self.height // 2, image=self.picture_image_buffer, anchor=tk.CENTER)
+        # self.canvas.pack(fill="both", expand=True)
+        self.canvas.place(relx=0.5, y=self.header_height, anchor="n", width=self.width, height=self.height - self.header_height - self.footer_height)
+
+        # header
+        self.header = tk.Frame(self, width=self.width, height=self.header_height, bg="#fffef5")
+        self.header.place(relx=0.5, y=0, anchor="n", width=self.width, height=self.header_height)
+        self.header_title = tk.Label(self.header, text="", font=("Cormorant Garamond", 35), bg="#fffef5", padx=30)
+        self.header_subtitle = tk.Label(self.header, text="", font=("Cormorant Garamond SemiBold", 15), bg="#fffef5", padx=30)
+        if self.header_height > 0:
+            self.header_title.place(relx=1, rely=0.4, anchor="e")
+            self.header_subtitle.place(relx=1, rely=0.75, anchor="e")
+
+        # footer
+        self.footer = tk.Frame(self, width=self.width, height=self.footer_height, bg="#fffef5")
+        self.footer.place(relx=0.5, y=self.height, anchor="s", width=self.width, height=self.footer_height)
+        self.footer_title = tk.Label(self.footer, text="", font=("Cormorant Garamond", 15), bg="#fffef5", padx=30)
+        self.footer_subtitle = tk.Label(self.footer,  text="", font=("Cormorant Garamond", 11), bg="#fffef5", padx=30, wraplength=self.width - 60, justify="left")
+        if self.footer_height > 0:
+            self.footer_title.place(relx=0, y=20, anchor="nw")
+            self.footer_subtitle.place(relx=0, y=60, anchor="nw")
+
+        self.picture_image_buffer = ImageTk.PhotoImage(Image.new("RGB", (self.width, self.image_height), (255, 254, 245)))
+        self.picture_buffer = self.canvas.create_image(self.width // 2, self.image_height // 2, image=self.picture_image_buffer, anchor=tk.CENTER)
 
         self.overlay_active = False
         self.overlay_image_buffer = []
         self.overlay_buffer = []
         for alpha in range(0, 150, 15):
-            image = Image.new("RGBA", (self.width, self.height), (0, 0, 0, alpha))
+            image = Image.new("RGBA", (self.width, self.image_height), (0, 0, 0, alpha))
             self.overlay_image_buffer.append(ImageTk.PhotoImage(image))
             overlay_step = self.canvas.create_image(0, 0, image=self.overlay_image_buffer[-1], anchor="nw")
             self.canvas.itemconfig(overlay_step, state='hidden')
             self.overlay_buffer.append(overlay_step)
         self.image_uuid = None
         self.do_resize = True
+        
+        self.enable_chatgpt = True
         
         self.menu_frame = tk.Frame(self, bg="#141414")
         self.reset_button = BlockButton(self, "new", "#8df0ad", 15, command=self.generate_new_image)
@@ -146,13 +177,13 @@ class App(ctk.CTk):
         self.image_manager: ImageManager = None
         self.config_manager: ConfigManager = None
 
-        self.history_frame_width = int(self.width * 0.618)
-        self.history_frame_height = self.height - 300
+        self.history_frame_width = int(self.width * 0.8)
+        self.history_frame_height = int(self.height * 0.65)
         self.history_frame = None
         self.history_close_button = BlockButton(self, "close", "#b3b3b3", 15, command=self.hide_history_frame)
 
-        self.setting_frame_width = 760
-        self.setting_frame_height = 600
+        self.setting_frame_width = min(760, self.width * 0.75)
+        self.setting_frame_height = min(650, self.height * 0.75)
         self.setting_frame = None
         self.setting_changed = tk.BooleanVar(value=False)
         self.setting_save_button = BlockButton(self, "save", "#8df0ad", 15, command=self.save_setting)
@@ -170,6 +201,8 @@ class App(ctk.CTk):
             if last_record := self.image_manager.get_last_record():
                 self.set_image(last_record.uuid)
 
+        self.enable_chatgpt = self.config_manager.get_config_value("enable_chatgpt", do_raise=False)
+
     def set_managers(self, image_manager: ImageManager, config_manager: ConfigManager):
         self.image_manager = image_manager
         self.config_manager = config_manager
@@ -179,7 +212,8 @@ class App(ctk.CTk):
         self.history_frame = ScrollableGalleryFrame(
             self, 
             self.history_frame_width, 
-            self.history_frame_height, 
+            self.history_frame_height,
+            float(self.image_height) / float(self.width), 
             self.image_manager, 
             display_command=self.gallary_display_command,
             delete_command=self.gallary_delete_command,
@@ -215,7 +249,7 @@ class App(ctk.CTk):
         self.history_frame.remove_item(uuid)
     
     def set_empty_image(self):
-        self.picture_image_buffer = ImageTk.PhotoImage(Image.new("RGBA", (self.width, self.height), (0, 0, 0, 255)))
+        self.picture_image_buffer = ImageTk.PhotoImage(Image.new("RGBA", (self.width, self.image_height), (0, 0, 0, 255)))
         self.canvas.itemconfig(self.picture_buffer, image=self.picture_image_buffer)
         self.image_uuid = None
 
@@ -225,14 +259,21 @@ class App(ctk.CTk):
             image = Image.open(image_path)
         except Exception as e:
             print(e)
-            image = Image.new("RGBA", (self.width, self.height), (0, 0, 0, 255))
+            image = Image.new("RGBA", (self.width, self.image_height), (0, 0, 0, 255))
 
         if self.do_resize:
-            image = resize_image(image, self.width, self.height)
+            image = resize_image(image, self.width, self.image_height)
         self.picture_image_buffer = ImageTk.PhotoImage(image)
         self.canvas.itemconfig(self.picture_buffer, image=self.picture_image_buffer)
         self.image_uuid = image_uuid
         self.config_manager.set_config_value("current_image", image_uuid)
+
+        record = self.image_manager.get_record(image_uuid)
+        if record:
+            self.header_title.configure(text=(record.title or "").title())
+            self.header_subtitle.configure(text=(record.model or "").replace("_", " ").replace("-", " "))
+            self.footer_title.configure(text=(record.date or datetime.date.today()).strftime("%B %d, %Y"))
+            self.footer_subtitle.configure(text=record.prompt)
 
     def fade(self, dir):
         if dir == "in":
@@ -311,9 +352,9 @@ class App(ctk.CTk):
         self.hide_menu()
         self.show_listen_status()
 
-        prompt = voice_to_prompt(self.show_listen_progressbar, self.hide_listen_progressbar, self.update_listen_status)
+        title, prompt = voice_to_prompt(self.show_listen_progressbar, self.hide_listen_progressbar, self.update_listen_status, self.enable_chatgpt)
         
-        record = self.image_manager.generate(prompt)
+        record = self.image_manager.generate(title, prompt)
         self.set_image(record.uuid)
         self.history_frame.add_item(record)
 
