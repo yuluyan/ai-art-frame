@@ -10,6 +10,9 @@ from image_manager import ImageManager, ImageRecord
 from voice import voice_to_prompt
 from config_manager import ConfigManager
 
+from voice_control import VoiceControl, standard_recognize
+from prompt import speech_to_prompt
+
 from gui_components.general import BlockButton
 from gui_components.history import GalleryItem
 from gui_components.setting import SettingGroupLabel, SettingItem
@@ -108,7 +111,24 @@ class App(ctk.CTk):
     def __init__(self):
         super().__init__()
 
+        self.image_uuid = None
+        self.do_resize = True
+        self.enable_chatgpt = True
+
+        self.image_manager: ImageManager = None
+        self.config_manager: ConfigManager = None
+
+        self.voice_control = VoiceControl()
+        self.voice_control.register_trigger_phrases(
+            ["generate"], self.voice_callback_newimage, 
+            wait_start_callback=self.show_listen_progressbar, 
+            wait_end_callback=self.hide_listen_progressbar, 
+            modal=True
+        )
+        self.voice_control.start()
+
         self.width, self.height = 720, 1280
+        # self.width, self.height = 1080, 1920
         # self.width, self.height = 1920, 1080
         
         self.header_height = int(self.height * (1 - 0.65) * 0.4)
@@ -121,7 +141,9 @@ class App(ctk.CTk):
         self.geometry(f"{self.width}x{self.height}")
         self.resizable(False, False)
         self.iconbitmap(os.path.join(os.path.dirname(__file__), '..', 'icon.ico'))
+        self.protocol("WM_DELETE_WINDOW", self.exit)
 
+        # canvas
         self.canvas = tk.Canvas(self, width=self.width, height=self.height, highlightthickness=0)
         self.canvas.bind("<Button-1>", self.show_overlay)
         # self.canvas.pack(fill="both", expand=True)
@@ -145,9 +167,11 @@ class App(ctk.CTk):
             self.footer_title.place(relx=0, y=20, anchor="nw")
             self.footer_subtitle.place(relx=0, y=60, anchor="nw")
 
+        # picture
         self.picture_image_buffer = ImageTk.PhotoImage(Image.new("RGB", (self.width, self.image_height), (255, 254, 245)))
         self.picture_buffer = self.canvas.create_image(self.width // 2, self.image_height // 2, image=self.picture_image_buffer, anchor=tk.CENTER)
 
+        # overlay
         self.overlay_active = False
         self.overlay_image_buffer = []
         self.overlay_buffer = []
@@ -157,31 +181,28 @@ class App(ctk.CTk):
             overlay_step = self.canvas.create_image(0, 0, image=self.overlay_image_buffer[-1], anchor="nw")
             self.canvas.itemconfig(overlay_step, state='hidden')
             self.overlay_buffer.append(overlay_step)
-        self.image_uuid = None
-        self.do_resize = True
-        
-        self.enable_chatgpt = True
-        
+
+        # menu buttons
         self.menu_frame = tk.Frame(self, bg="#141414")
-        self.reset_button = BlockButton(self, "new", "#8df0ad", 15, command=self.generate_new_image)
+        self.reset_button = BlockButton(self, "new", "#8df0ad", 15, command=self.button_command_newimage)
         self.history_button = BlockButton(self, "history", "#76b5c5", 15, command=self.show_history_frame)
         self.setting_button = BlockButton(self, "setting", "#ffcc66", 15, command=self.show_setting_frame)
         self.close_overlay_button = BlockButton(self, "close", "#b3b3b3", 15, command=self.hide_overlay)
         self.exit_button = BlockButton(self, "exit", "#ff5447", 15, command=self.exit)
         
+        # listen status
         self.listen_frame = tk.Frame(self, bg="#141414")
         self.listen_text =  tk.StringVar()
-        self.listen_status = tk.Label(self, textvariable=self.listen_text, bg="#141414", fg="#8df0ad", font=("Consolas", 12, "bold"), wraplength=500, justify="center")
-        self.listen_progressbar = ctk.CTkProgressBar(self, mode="indeterminate", indeterminate_speed=1.5, width=400, height=20, progress_color="#8df0ad")
+        self.listen_status = tk.Label(self, textvariable=self.listen_text, bg="#141414", fg="#fff7e3", font=("Consolas", 12, "bold"), wraplength=500, justify="center")
+        self.listen_progressbar = ctk.CTkProgressBar(self, mode="indeterminate", indeterminate_speed=1.5, width=400, height=20, progress_color="#fff7e3", corner_radius=0)
 
-        self.image_manager: ImageManager = None
-        self.config_manager: ConfigManager = None
-
+        # history frame
         self.history_frame_width = int(self.width * 0.8)
         self.history_frame_height = int(self.height * 0.65)
         self.history_frame = None
         self.history_close_button = BlockButton(self, "close", "#b3b3b3", 15, command=self.hide_history_frame)
 
+        # setting frame
         self.setting_frame_width = min(760, self.width * 0.75)
         self.setting_frame_height = min(650, self.height * 0.75)
         self.setting_frame = None
@@ -319,22 +340,20 @@ class App(ctk.CTk):
             self.fade("out")
 
     def show_listen_status(self):
-        self.listen_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER, width=600, height=300)
-        self.listen_status.place(relx=0.5, rely=0.5, anchor=tk.CENTER, width=600, height=300)
+        self.listen_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER, width=600, height=400)
+        self.listen_status.place(relx=0.5, rely=0.5, anchor=tk.CENTER, width=600, height=400)
         self.listen_text.set("Please wait...")
         self.update()
-
+    
     def show_listen_progressbar(self):
-        # self.listen_progressbar.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
-        self.listen_text.set("Start speaking")
+        self.listen_progressbar.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         self.update()
-        # self.listen_progressbar.start()
+        self.listen_progressbar.start()
     
     def hide_listen_progressbar(self):
-        # self.listen_progressbar.place_forget()
-        self.listen_text.set("Speech detected, recognizing...")
+        self.listen_progressbar.place_forget()
         self.update()
-        # self.listen_progressbar.stop()
+        self.listen_progressbar.stop()
 
     def update_listen_status(self, text):
         self.listen_text.set(text)
@@ -346,14 +365,52 @@ class App(ctk.CTk):
         self.update()
 
     def exit(self):
+        self.voice_control.stop()
         self.destroy()
 
-    def generate_new_image(self):
+    def button_command_newimage(self):
         self.hide_menu()
+        self.voice_control.trigger("generate")
+    
+    def voice_callback_newimage(self, speech, mic, rec):
         self.show_listen_status()
 
-        title, prompt = voice_to_prompt(self.show_listen_progressbar, self.hide_listen_progressbar, self.update_listen_status, self.enable_chatgpt)
-        
+        def _status_callback(msg):
+            self.update_listen_status(msg)
+            print(msg)
+
+        speech = standard_recognize(
+            mic, rec, timeout=45, 
+            start_callback=lambda: self.update_listen_status("Start speaking"),
+            end_callback=lambda: self.update_listen_status("Speech detected, recognizing...")
+        )
+
+        if speech:
+            _status_callback(f"Detected speech: {speech}")
+        else:
+            _status_callback("Could not request results from Whisper API")
+
+        speech = speech.strip(",.?!;:")
+
+        if "title" in speech:
+            speech_splited = speech.split("title")
+            speech = " ".join(speech_splited[:-1]).strip(",.?!;:")
+            title = speech_splited[-1].strip(",.?!;:")
+        else:
+            title = speech
+
+        if "verbose" in speech or not self.enable_chatgpt:
+            speech = speech.replace("verbose", "").strip(",.?!;:")
+            _status_callback(f"Verbose mode: {speech}")
+
+        else:
+            try:
+                prompt = speech_to_prompt(speech)
+                _status_callback(f"Title: {title}\nGenerated prompt: {prompt}")
+            except Exception as e:
+                _status_callback(f"Could not generate prompt: {e}")
+                prompt = speech
+
         record = self.image_manager.generate(title, prompt)
         self.set_image(record.uuid)
         self.history_frame.add_item(record)
