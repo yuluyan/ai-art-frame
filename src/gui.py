@@ -1,23 +1,23 @@
 import datetime
+import os
+from PIL import Image, ImageTk
+
 import tkinter as tk
 import customtkinter as ctk
-from PIL import Image, ImageTk
-import os
-import speech_recognition as sr
 
-from utils import resize_image, get_openai_key
-from image_manager import ImageManager, ImageRecord
-from voice import voice_to_prompt
+from image_manager import ImageManager
 from config_manager import ConfigManager
-
-from voice_control import VoiceControl, standard_recognize
+from voice_manager import VoiceManager, standard_recognize
 from prompt import speech_to_prompt
+from utils import resize_image
 
 from gui_components.general import BlockButton
 from gui_components.history import GalleryItem
 from gui_components.setting import SettingGroupLabel, SettingItem
 
+
 ctk.set_appearance_mode("dark")
+
 
 class ScrollableGalleryFrame(ctk.CTkScrollableFrame):
     def __init__(self, master, width, height, aspect_ratio, image_manager, display_command=None, delete_command=None, **kwargs):
@@ -118,7 +118,7 @@ class App(ctk.CTk):
         self.image_manager: ImageManager = None
         self.config_manager: ConfigManager = None
 
-        self.voice_control = VoiceControl()
+        self.voice_control = VoiceManager()
         self.voice_control.register_trigger_phrases(
             ["generate"], self.voice_callback_newimage, 
             wait_start_callback=self.show_listen_progressbar, 
@@ -465,3 +465,4 @@ if __name__ == "__main__":
     app = App()
     app.set_managers(image_manager, config_manager)
     app.mainloop()
+    
