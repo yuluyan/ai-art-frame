@@ -2,8 +2,8 @@ import os
 
 from gui import App
 from generator import OpenAIImageGenerator, LocalStableDiffusionImageGenerator
-from image_manager import ImageManager
-from config_manager import ConfigManager
+from managers.image_manager import ImageManager
+from managers.config_manager import ConfigManager
 
 
 def main():

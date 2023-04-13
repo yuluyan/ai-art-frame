@@ -5,9 +5,9 @@ from PIL import Image, ImageTk
 import tkinter as tk
 import customtkinter as ctk
 
-from image_manager import ImageManager
-from config_manager import ConfigManager
-from voice_manager import VoiceManager, standard_recognize
+from managers.image_manager import ImageManager
+from managers.config_manager import ConfigManager
+from managers.voice_manager import VoiceManager, standard_recognize
 from prompt import speech_to_prompt
 from utils import resize_image
 
@@ -457,7 +457,7 @@ class App(ctk.CTk):
 if __name__ == "__main__":
     import os
     from generator import OpenAIImageGenerator, LocalStableDiffusionImageGenerator
-    from image_manager import ImageManager
+    from managers.image_manager import ImageManager
 
     image_manager = ImageManager(os.path.join(os.path.dirname(__file__), '..', 'imgs'), LocalStableDiffusionImageGenerator())
     config_manager = ConfigManager()
@@ -465,4 +465,3 @@ if __name__ == "__main__":
     app = App()
     app.set_managers(image_manager, config_manager)
     app.mainloop()
-    

@@ -31,7 +31,7 @@ def deserialize_config_group(config_group_dict: dict) -> ConfigGroup:
 
 class ConfigManager:
     def __init__(self, reinitialize=False) -> None:
-        self.configs_path = os.path.join(os.path.dirname(__file__), '..', "configs.json")
+        self.configs_path = os.path.join(os.path.dirname(__file__), "..", "..", "configs.json")
         self.configs = self._read_configs()
 
         self.initialize_configs(overwrite=reinitialize)

@@ -1,5 +1,6 @@
 import tkinter as tk
 
+
 class BlockButton(tk.Button):
     def __init__(self, master, text, bc, fs, command, **kwargs):
         self.bc = bc

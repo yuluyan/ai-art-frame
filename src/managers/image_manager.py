@@ -6,7 +6,7 @@ import os
 import typing
 
 from generator import ImageGenerator, OpenAIImageGenerator
-from config_manager import ConfigManager
+from managers.config_manager import ConfigManager
 from utils import date_serializer, date_deserializer
 
 

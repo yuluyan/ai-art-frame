@@ -3,14 +3,12 @@ import base64
 import copy
 import requests
 import typing
-import uuid
-import os
 
 from io import BytesIO
 from PIL import Image
 
 from utils import get_openai_key, get_sd_port
-from config_manager import ConfigManager
+from managers.config_manager import ConfigManager
 
 
 class ImageGenerator:
