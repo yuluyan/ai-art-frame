@@ -7,7 +7,7 @@ from gui_components.general import BlockButton
 
 
 class GalleryItem(ctk.CTkFrame):
-    def __init__(self, master, image_width, image_height, uuid: str, prompt: str, path, display_command, delete_command, **kwargs):
+    def __init__(self, master, image_width, image_height, uuid: str, display_text: str, path, display_command, delete_command, **kwargs):
         super().__init__(master, **kwargs)
         self.image_height_percent = 70
         self.label_wrap_length = 80
@@ -22,7 +22,6 @@ class GalleryItem(ctk.CTkFrame):
 
         self.uuid = uuid
 
-        display_text = prompt
         for char in ["\n", "`", "'"]:
             display_text = display_text.replace(char, " ")
         display_text = display_text.strip(",.:;!?").lower()
@@ -34,7 +33,7 @@ class GalleryItem(ctk.CTkFrame):
             self, 
             text=display_text, 
             justify="center", 
-            wraplength=image_width - 20, 
+            # wraplength=image_width - 20, 
             pady=2, width=image_width, 
             height=40, 
             fg_color="#141414", 

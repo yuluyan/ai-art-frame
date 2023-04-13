@@ -46,7 +46,7 @@ class ScrollableGalleryFrame(ctk.CTkScrollableFrame):
             self.width / 3 - 30, 
             (self.width / 3 - 30) * self.aspect_ratio, 
             record.uuid, 
-            record.prompt, 
+            record.title, 
             self.image_manager.uuid_to_path(record.uuid), 
             display_command=self.display_command, 
             delete_command=self.delete_command
@@ -381,8 +381,10 @@ class App(ctk.CTk):
 
         speech = standard_recognize(
             mic, rec, timeout=45, 
-            start_callback=lambda: self.update_listen_status("Start speaking"),
-            end_callback=lambda: self.update_listen_status("Speech detected, recognizing...")
+            start_callback=self.show_listen_progressbar,
+            # start_callback=lambda: self.update_listen_status("Start speaking"),
+            end_callback=self.hide_listen_progressbar,
+            # end_callback=lambda: self.update_listen_status("Speech detected, recognizing...")
         )
 
         if speech:
