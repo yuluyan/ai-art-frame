@@ -7,8 +7,8 @@ import typing
 from io import BytesIO
 from PIL import Image
 
-from utils import get_openai_key, get_sd_port
 from managers.config_manager import ConfigManager
+from utils import get_openai_key, get_sd_port
 
 
 class ImageGenerator:
