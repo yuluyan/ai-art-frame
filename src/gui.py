@@ -140,7 +140,7 @@ class App(ctk.CTk):
         self.title("AI Art Frame")
         self.geometry(f"{self.width}x{self.height}")
         self.resizable(False, False)
-        self.iconbitmap(os.path.join(os.path.dirname(__file__), '..', 'icon.ico'))
+        # self.iconbitmap(os.path.join(os.path.dirname(__file__), '..', 'icon.ico'))
         self.protocol("WM_DELETE_WINDOW", self.exit)
 
         # canvas
