@@ -1,0 +1,65 @@
+[
+  {
+    "uuid": "7bd8902d-84f9-4220-9656-96dff18133f5",
+    "prompt": "A modern, contemporary painting featuring large colorful blocks, bursting with vibrancy and energy.",
+    "title": "contemporary color blocks",
+    "date": "2023-04-04",
+    "model": "stable_diffusion-v1.5"
+  },
+  {
+    "uuid": "e0153a1a-dda1-4e53-a737-878f7d42315b",
+    "prompt": "A surreal digital painting of a ribose molecule floating in a colorful and abstract sci-fi environment, intricate, highly detailed, vibrant colors, sharp focus, artstation, trending.",
+    "title": "surreal ribose molecule",
+    "date": "2023-04-06",
+    "model": "stable_diffusion-v1.5"
+  },
+  {
+    "uuid": "a56b5ad7-1bf5-4e46-a6b0-b7b6f3435324",
+    "prompt": "A highly detailed, hyperrealistic photograph of a deer in the forest at golden hour, shot with a Canon EOS C300 and a \u01921.8 lens. The soft focus and sun rays create a cinematic and dreamy atmosphere, reminiscent of National Geographic award-winning photographs by Nick Nichols. The wildlife photography is of high quality and would make for a stunning medium-format print for the home or interior. The detailed fur and realistic matte painting are done using Octane Render and Unreal Engine, resulting in a hyper photorealistic maximum detail artwork. The anthro deer is a very cute kid's film character, reminiscent of Disney Pixar's Zootopia character concept artwork. The artwork is a 3D concept with hyper detailed and highly detailed rendering, trending on ArtStation.",
+    "title": "dear in the forest",
+    "date": "2023-04-07",
+    "model": "stable_diffusion-v1.5"
+  },
+  {
+    "uuid": "8f20970d-60f2-43cc-8596-0629e40e072f",
+    "prompt": "An intricate and highly detailed abstract artwork with a contemporary twist, rendered in high quality and soft focus with a vibrant color scheme and sharp lines. Trending on Artstation, this piece features stunning sun rays and volumetric lighting, bringing depth and contrast to the piece. Created with a Canon EOS C 300 and shot in 35mm, this hyper-realistic maximum detail piece is sure to captivate and inspire.",
+    "title": "abstract twists",
+    "date": "2023-04-08",
+    "model": "stable_diffusion-v1.5"
+  },
+  {
+    "uuid": "1dc872ab-3ffa-4c84-b146-aacc5ec5892c",
+    "prompt": "A highly detailed, photorealistic rendering of a beautiful sunset, with warm, golden hour lighting, soft focus, and vivid colors, captured on a high quality 35 mm camera with an \u0192 1.8 lens and rendered in octane at 8k resolution. The sunrays and volumetric lighting create an ethereal atmosphere, while the intricate details and sharp focus give the scene a hyperrealistic feel. The cinematic composition and artful use of depth of field make this an award-worthy photograph, sure to be trending on ArtStation and National Geographic.",
+    "title": "beautiful sunset",
+    "date": "2023-04-10",
+    "model": "stable_diffusion-v1.5"
+  },
+  {
+    "uuid": "fe1c43f9-81e6-440d-9578-cc3b9ccec626",
+    "prompt": "A highly detailed, photorealistic depiction of a cute and very adorable kid's film character, reminiscent of Disney Pixar's Zootopia, in a beautiful and tranquil forest setting with sun rays filtering through the trees, rendered in ultra HD 8K resolution with soft focus and volumetric lighting, trending on Artstation and DeviantArt, drawn in a cartoon style with intricate details and realistic matte painting techniques, perfect for use as key art or cinematic concept art.",
+    "title": "nina",
+    "date": "2023-04-12",
+    "model": "stable_diffusion-v1.5"
+  },
+  {
+    "uuid": "bc99b829-9f91-41c8-a354-548eaf88b02f",
+    "prompt": "A hyperrealistic photograph of a bottle of water, shot with a Canon EOS C300 at f/1.8, with soft focus and sunrays shining through the water droplets, in high quality 8k resolution. The artwork is a national geographic award-winning photograph by Nick Nichols, trending on Artstation and DeviantArt.",
+    "title": "a bottle of water",
+    "date": "2023-04-13",
+    "model": "stable_diffusion-v1.5"
+  },
+  {
+    "uuid": "de895f02-c6ae-4dc1-96c8-81fe064e7637",
+    "prompt": "A highly detailed and intricate photorealistic rendering of a bottle of fire with volumetric lighting and intense cinematic composition, rendered in Octane with 8K resolution.",
+    "title": "a bottle of fire",
+    "date": "2023-04-13",
+    "model": "stable_diffusion-v1.5"
+  },
+  {
+    "uuid": "7ce18cdf-74c4-4684-b492-27775d6d4a4a",
+    "prompt": "A hyper-realistic photograph of a test tube with colorful liquids, in soft focus and shot with a Canon EOS C300 at f/1.8, with volumetric lighting and sun rays shining through the window in the background, trending on ArtStation and DeviantArt.",
+    "title": "test, test",
+    "date": "2023-04-13",
+    "model": "stable_diffusion-v1.5"
+  }
+]

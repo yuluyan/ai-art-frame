@@ -1,0 +1,217 @@
+[
+  {
+    "name": "general_configs",
+    "label": "General Settings",
+    "items": [
+      {
+        "name": "current_image",
+        "label": "Current Image",
+        "type": "str",
+        "value": "7ce18cdf-74c4-4684-b492-27775d6d4a4a",
+        "range": null,
+        "editable": false
+      },
+      {
+        "name": "do_resize",
+        "label": "Resize to Fit",
+        "type": "bool",
+        "value": true,
+        "range": null,
+        "editable": true
+      },
+      {
+        "name": "enable_chatgpt",
+        "label": "Enable ChatGPT Prompt",
+        "type": "bool",
+        "value": true,
+        "range": null,
+        "editable": true
+      }
+    ]
+  },
+  {
+    "name": "stable_diffusion_configs",
+    "label": "Stable Diffusion Settings",
+    "items": [
+      {
+        "name": "model",
+        "label": "Model",
+        "type": "str",
+        "value": "stable_diffusion-v1.5",
+        "range": [
+          "stable_diffusion-v1.5",
+          "aom-v3a1b",
+          "chillout_mix",
+          "urpm-v13"
+        ],
+        "editable": true
+      },
+      {
+        "name": "steps",
+        "label": "Steps",
+        "type": "int",
+        "value": 25,
+        "range": [
+          1,
+          150,
+          1
+        ],
+        "editable": true
+      },
+      {
+        "name": "cfg_scale",
+        "label": "CFG",
+        "type": "float",
+        "value": 7.0,
+        "range": [
+          1.0,
+          30.0,
+          0.1
+        ],
+        "editable": true
+      },
+      {
+        "name": "width",
+        "label": "Width",
+        "type": "int",
+        "value": 512,
+        "range": [
+          64,
+          2048,
+          16
+        ],
+        "editable": true
+      },
+      {
+        "name": "height",
+        "label": "Height",
+        "type": "int",
+        "value": 512,
+        "range": [
+          64,
+          2048,
+          16
+        ],
+        "editable": true
+      },
+      {
+        "name": "restore_faces",
+        "label": "Restore Faces",
+        "type": "bool",
+        "value": false,
+        "range": null,
+        "editable": true
+      },
+      {
+        "name": "sampler_name",
+        "label": "Sampler",
+        "type": "str",
+        "value": "DPM++ SDE Karras",
+        "range": [
+          "Euler a",
+          "Euler",
+          "LMS",
+          "Heun",
+          "DPM2",
+          "DPM2 a",
+          "DPM++ 2S a",
+          "DPM++ 2M",
+          "DPM++ SDE",
+          "DPM fast",
+          "DPM adaptive",
+          "LMS Karras",
+          "DPM2 Karras",
+          "DPM2 a Karras",
+          "DPM++ 2S a Karras",
+          "DPM++ 2M Karras",
+          "DPM++ SDE Karras",
+          "DDIM",
+          "PLMS",
+          "UniPC"
+        ],
+        "editable": true
+      },
+      {
+        "name": "enable_hr",
+        "label": "Hyper Resolution",
+        "type": "bool",
+        "value": true,
+        "range": null,
+        "editable": true
+      },
+      {
+        "name": "denoising_strength",
+        "label": "Denoise Strength",
+        "type": "float",
+        "value": 0.7,
+        "range": [
+          0.0,
+          1.0,
+          0.01
+        ],
+        "editable": true
+      },
+      {
+        "name": "hr_upscaler",
+        "label": "Upscaler",
+        "type": "str",
+        "value": "ESRGAN_4x",
+        "range": [
+          "Latent",
+          "Latent (antialiased)",
+          "Latent (bicubic)",
+          "Latent (bicubic antialiased)",
+          "Latent (nearest)",
+          "Latent (nearest-exact)",
+          "None",
+          "Lanczos",
+          "Nearest",
+          "ESRGAN_4x",
+          "LDSR",
+          "R-ESRGAN 4x+",
+          "R-ESRGAN_4x+ Anime6B",
+          "ScuNET GAN",
+          "ScuNET PSNR",
+          "SwinIR 4x"
+        ],
+        "editable": true
+      },
+      {
+        "name": "hr_second_pass_steps",
+        "label": "Second Pass Steps",
+        "type": "int",
+        "value": 0,
+        "range": [
+          0,
+          150,
+          1
+        ],
+        "editable": true
+      },
+      {
+        "name": "hr_resize_x",
+        "label": "Hyper Res Width",
+        "type": "int",
+        "value": 720,
+        "range": [
+          64,
+          2048,
+          16
+        ],
+        "editable": true
+      },
+      {
+        "name": "hr_resize_y",
+        "label": "Hyper Res Height",
+        "type": "int",
+        "value": 832,
+        "range": [
+          64,
+          2048,
+          16
+        ],
+        "editable": true
+      }
+    ]
+  }
+]

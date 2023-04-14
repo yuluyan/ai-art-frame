@@ -1,7 +1,5 @@
 *.secret
-imgs/*
 */__pycache__
 */__pycache__/*
 */*/__pycache__
 */*/__pycache__/*
-configs.json
