@@ -56,10 +56,17 @@
     "model": "stable_diffusion-v1.5"
   },
   {
-    "uuid": "7ce18cdf-74c4-4684-b492-27775d6d4a4a",
-    "prompt": "A hyper-realistic photograph of a test tube with colorful liquids, in soft focus and shot with a Canon EOS C300 at f/1.8, with volumetric lighting and sun rays shining through the window in the background, trending on ArtStation and DeviantArt.",
-    "title": "test, test",
-    "date": "2023-04-13",
+    "uuid": "0cf324f7-715f-4bc6-8d83-c6663afe2754",
+    "prompt": "A hyperrealistic digital painting of a beautiful fantasy forest landscape with a flowing river, stunning sun rays and volumetric light, featuring a very cute kid's film character similar to Disney Pixar Zootopia concept artwork, rendered in 8k with soft focus and shot on a Canon EOS C300 \u01921.8 lens to achieve maximum detail and realism, trending on Artstation and DeviantArt.",
+    "title": "natasha delona",
+    "date": "2023-04-22",
+    "model": "stable_diffusion-v1.5"
+  },
+  {
+    "uuid": "4ed22de7-8327-48c9-9e4f-0abc28d368d8",
+    "prompt": "A hyper-realistic portrait of \"my love\" with soft focus and sharp contrast, shot on a Canon EOS C 300 with a \u0192 1.8 lens and rendered in Octane with volumetric lighting and sun rays. The highly detailed and cinematic composition features a beautiful and elegant subject with intricate details, including hyper-detailed fur and a photorealistic maximum detail design. Trending on Artstation and DeviantArt, the artwork is a stunning 8K medium-format print that captures the essence of true love in every detail.",
+    "title": "my love",
+    "date": "2023-04-22",
     "model": "stable_diffusion-v1.5"
   }
 ]

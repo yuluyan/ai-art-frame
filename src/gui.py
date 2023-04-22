@@ -127,8 +127,8 @@ class App(ctk.CTk):
         )
         self.voice_control.start()
 
-        self.width, self.height = 720, 1280
-        # self.width, self.height = 1080, 1920
+        # self.width, self.height = 720, 1280
+        self.width, self.height = 1080, 1920
         # self.width, self.height = 1920, 1080
         
         self.header_height = int(self.height * (1 - 0.65) * 0.4)
@@ -136,13 +136,14 @@ class App(ctk.CTk):
 
         self.image_height = self.height - self.header_height - self.footer_height
 
-        # self.attributes("-fullscreen", True)
+        self.attributes("-fullscreen", True)
+        self.config(cursor="none")
         self.title("AI Art Frame")
         self.geometry(f"{self.width}x{self.height}")
         self.resizable(False, False)
         # self.iconbitmap(os.path.join(os.path.dirname(__file__), '..', 'icon.ico'))
         self.protocol("WM_DELETE_WINDOW", self.exit)
-
+        
         # canvas
         self.canvas = tk.Canvas(self, width=self.width, height=self.height, highlightthickness=0)
         self.canvas.bind("<Button-1>", self.show_overlay)
@@ -152,8 +153,8 @@ class App(ctk.CTk):
         # header
         self.header = tk.Frame(self, width=self.width, height=self.header_height, bg="#fffef5")
         self.header.place(relx=0.5, y=0, anchor="n", width=self.width, height=self.header_height)
-        self.header_title = tk.Label(self.header, text="", font=("Cormorant Garamond", 35), bg="#fffef5", padx=30)
-        self.header_subtitle = tk.Label(self.header, text="", font=("Cormorant Garamond SemiBold", 15), bg="#fffef5", padx=30)
+        self.header_title = tk.Label(self.header, text="", font=("Cormorant Garamond Light", 60), bg="#fffef5", padx=30)
+        self.header_subtitle = tk.Label(self.header, text="", font=("Cormorant Garamond", 25), bg="#fffef5", padx=30)
         if self.header_height > 0:
             self.header_title.place(relx=1, rely=0.4, anchor="e")
             self.header_subtitle.place(relx=1, rely=0.75, anchor="e")
@@ -161,11 +162,11 @@ class App(ctk.CTk):
         # footer
         self.footer = tk.Frame(self, width=self.width, height=self.footer_height, bg="#fffef5")
         self.footer.place(relx=0.5, y=self.height, anchor="s", width=self.width, height=self.footer_height)
-        self.footer_title = tk.Label(self.footer, text="", font=("Cormorant Garamond", 15), bg="#fffef5", padx=30)
-        self.footer_subtitle = tk.Label(self.footer,  text="", font=("Cormorant Garamond", 11), bg="#fffef5", padx=30, wraplength=self.width - 60, justify="left")
+        self.footer_title = tk.Label(self.footer, text="", font=("Cormorant Garamond", 30), bg="#fffef5", padx=40)
+        self.footer_subtitle = tk.Label(self.footer,  text="", font=("Cormorant Garamond Light", 16), bg="#fffef5", padx=40, wraplength=self.width - 60, justify="left")
         if self.footer_height > 0:
-            self.footer_title.place(relx=0, y=20, anchor="nw")
-            self.footer_subtitle.place(relx=0, y=60, anchor="nw")
+            self.footer_title.place(relx=0, y=30, anchor="nw")
+            self.footer_subtitle.place(relx=0, y=100, anchor="nw")
 
         # picture
         self.picture_image_buffer = ImageTk.PhotoImage(Image.new("RGB", (self.width, self.image_height), (255, 254, 245)))
@@ -175,8 +176,8 @@ class App(ctk.CTk):
         self.overlay_active = False
         self.overlay_image_buffer = []
         self.overlay_buffer = []
-        for alpha in range(0, 150, 15):
-            image = Image.new("RGBA", (self.width, self.image_height), (0, 0, 0, alpha))
+        for alpha in range(0, 150, 149):
+            image = Image.new("RGBA", (self.width, self.image_height), (0, 0, 0, 0))
             self.overlay_image_buffer.append(ImageTk.PhotoImage(image))
             overlay_step = self.canvas.create_image(0, 0, image=self.overlay_image_buffer[-1], anchor="nw")
             self.canvas.itemconfig(overlay_step, state='hidden')

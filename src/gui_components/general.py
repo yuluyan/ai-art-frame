@@ -14,7 +14,8 @@ class BlockButton(tk.Button):
             bg=self.fc, 
             border=0, 
             activeforeground=self.fc, 
-            activebackground=self.bc, 
+            activebackground=self.bc,
+            highlightthickness=0,
             command=command, 
             **kwargs
         )
