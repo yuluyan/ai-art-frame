@@ -56,6 +56,8 @@ class VoiceManager:
         self.modal = False
         self.command_queue = queue.Queue()
         self.microphone_lock = threading.Lock()
+        
+        self.disable_background_listening = False
 
     def register_trigger_phrases(
         self, 
@@ -82,7 +84,7 @@ class VoiceManager:
             self.phrase_mapping[p.lower()] = phrase_id
 
     def _listen_for_commands(self):
-        while self.running:
+        while self.running and not self.disable_background_listening:
             if not self.modal:
                 try:
                     with self.microphone_lock:

@@ -1,5 +1,6 @@
 import datetime
 import os
+import threading
 from PIL import Image, ImageTk
 
 import tkinter as tk
@@ -119,6 +120,7 @@ class App(ctk.CTk):
         self.config_manager: ConfigManager = None
 
         self.voice_control = VoiceManager()
+        self.voice_control.disable_background_listening = True
         self.voice_control.register_trigger_phrases(
             ["generate"], self.voice_callback_newimage, 
             wait_start_callback=self.show_listen_progressbar, 
@@ -138,6 +140,7 @@ class App(ctk.CTk):
 
         self.attributes("-fullscreen", True)
         self.config(cursor="none")
+
         self.title("AI Art Frame")
         self.geometry(f"{self.width}x{self.height}")
         self.resizable(False, False)
@@ -163,7 +166,7 @@ class App(ctk.CTk):
         self.footer = tk.Frame(self, width=self.width, height=self.footer_height, bg="#fffef5")
         self.footer.place(relx=0.5, y=self.height, anchor="s", width=self.width, height=self.footer_height)
         self.footer_title = tk.Label(self.footer, text="", font=("Cormorant Garamond", 30), bg="#fffef5", padx=40)
-        self.footer_subtitle = tk.Label(self.footer,  text="", font=("Cormorant Garamond Light", 16), bg="#fffef5", padx=40, wraplength=self.width - 60, justify="left")
+        self.footer_subtitle = tk.Label(self.footer,  text="", font=("Cormorant Garamond Light", 18), bg="#fffef5", padx=40, wraplength=self.width - 60, justify="left")
         if self.footer_height > 0:
             self.footer_title.place(relx=0, y=30, anchor="nw")
             self.footer_subtitle.place(relx=0, y=100, anchor="nw")
@@ -196,6 +199,7 @@ class App(ctk.CTk):
         self.listen_text =  tk.StringVar()
         self.listen_status = tk.Label(self, textvariable=self.listen_text, bg="#141414", fg="#fff7e3", font=("Consolas", 12, "bold"), wraplength=500, justify="center")
         self.listen_progressbar = ctk.CTkProgressBar(self, mode="indeterminate", indeterminate_speed=1.5, width=400, height=20, progress_color="#fff7e3", corner_radius=0)
+        self.generation_progressbar = ctk.CTkProgressBar(self, mode="determinate", width=600, height=20, progress_color="#fff7e3", corner_radius=0)
 
         # history frame
         self.history_frame_width = int(self.width * 0.8)
@@ -373,6 +377,19 @@ class App(ctk.CTk):
         self.hide_menu()
         self.voice_control.trigger("generate")
     
+    def show_generation_progressbar(self):
+        self.generation_progressbar.set(0.0)
+        self.generation_progressbar.place(relx=0.5, y=self.height / 2 + 200, anchor=tk.N)
+        self.update()
+    
+    def hide_generation_progressbar(self):
+        self.generation_progressbar.place_forget()
+        self.update()
+
+    def update_generation_progressbar(self, progress):
+        self.generation_progressbar.set(progress)
+        self.update()
+
     def voice_callback_newimage(self, speech, mic, rec):
         self.show_listen_status()
 
@@ -413,12 +430,20 @@ class App(ctk.CTk):
             except Exception as e:
                 _status_callback(f"Could not generate prompt: {e}")
                 prompt = speech
+        
+        self.show_generation_progressbar()
 
+        self.listen_thread = threading.Thread(target=lambda: self.image_manager.monitor_progress(self.update_generation_progressbar))
+        self.listen_thread.start()
         record = self.image_manager.generate(title, prompt)
+        self.listen_thread.join()
+
+        self.hide_generation_progressbar()
+        self.hide_listen_status()
+
         self.set_image(record.uuid)
         self.history_frame.add_item(record)
 
-        self.hide_listen_status()
         self.hide_overlay()
 
     def show_history_frame(self):

@@ -35,13 +35,6 @@
     "model": "stable_diffusion-v1.5"
   },
   {
-    "uuid": "fe1c43f9-81e6-440d-9578-cc3b9ccec626",
-    "prompt": "A highly detailed, photorealistic depiction of a cute and very adorable kid's film character, reminiscent of Disney Pixar's Zootopia, in a beautiful and tranquil forest setting with sun rays filtering through the trees, rendered in ultra HD 8K resolution with soft focus and volumetric lighting, trending on Artstation and DeviantArt, drawn in a cartoon style with intricate details and realistic matte painting techniques, perfect for use as key art or cinematic concept art.",
-    "title": "nina",
-    "date": "2023-04-12",
-    "model": "stable_diffusion-v1.5"
-  },
-  {
     "uuid": "bc99b829-9f91-41c8-a354-548eaf88b02f",
     "prompt": "A hyperrealistic photograph of a bottle of water, shot with a Canon EOS C300 at f/1.8, with soft focus and sunrays shining through the water droplets, in high quality 8k resolution. The artwork is a national geographic award-winning photograph by Nick Nichols, trending on Artstation and DeviantArt.",
     "title": "a bottle of water",
@@ -56,16 +49,16 @@
     "model": "stable_diffusion-v1.5"
   },
   {
-    "uuid": "0cf324f7-715f-4bc6-8d83-c6663afe2754",
-    "prompt": "A hyperrealistic digital painting of a beautiful fantasy forest landscape with a flowing river, stunning sun rays and volumetric light, featuring a very cute kid's film character similar to Disney Pixar Zootopia concept artwork, rendered in 8k with soft focus and shot on a Canon EOS C300 \u01921.8 lens to achieve maximum detail and realism, trending on Artstation and DeviantArt.",
-    "title": "natasha delona",
+    "uuid": "1ad4a701-5e01-480f-a94d-bd483550037e",
+    "prompt": "A hyper realistic photograph of a majestic lion, shot with a Canon EOS C 300 and \u0192 1.8 lens, in the golden hour sunlight of an African savannah. The lion's fur is highly detailed and intricately patterned, with volumetric light illuminating every strand. The photo is rendered in ultra high quality 8k and trending on Artstation.",
+    "title": "generate",
     "date": "2023-04-22",
     "model": "stable_diffusion-v1.5"
   },
   {
-    "uuid": "4ed22de7-8327-48c9-9e4f-0abc28d368d8",
-    "prompt": "A hyper-realistic portrait of \"my love\" with soft focus and sharp contrast, shot on a Canon EOS C 300 with a \u0192 1.8 lens and rendered in Octane with volumetric lighting and sun rays. The highly detailed and cinematic composition features a beautiful and elegant subject with intricate details, including hyper-detailed fur and a photorealistic maximum detail design. Trending on Artstation and DeviantArt, the artwork is a stunning 8K medium-format print that captures the essence of true love in every detail.",
-    "title": "my love",
+    "uuid": "cc8df251-aa8f-475a-9b65-15672eb7522d",
+    "prompt": "A hyperrealistic and highly detailed photograph of an adorable, very cute kid's film character, rendered in 8k resolution with soft focus, volumetric light, and sun rays, trending on Artstation, with a cinematic lighting and contrast that resembles the style of Kim Jung Gi and Zabrocki, shot with a Canon EOS C 300 camera and \u0192 1.8 lens.",
+    "title": "test, test",
     "date": "2023-04-22",
     "model": "stable_diffusion-v1.5"
   }

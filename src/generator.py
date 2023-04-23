@@ -150,9 +150,19 @@ class LocalStableDiffusionImageGenerator(ImageGenerator):
     def get_model(self):
         return self.model_mame
 
+    @staticmethod
+    def get_progress_url():
+        return f"http://{get_sd_port()}/sdapi/v1/progress?skip_current_image=false"
+
+    def get_progress(self):
+        url = LocalStableDiffusionImageGenerator.get_progress_url()
+
+        progress_json = requests.get(url=url).json()
+
+        return progress_json.get("progress")
+
 
 if __name__ == "__main__":
     gen = LocalStableDiffusionImageGenerator()
     # gen.generate("abstract art, art station").show()
-    gen.switch_model("stable_diffusion-v1.5")
-    
+    print(gen.get_progress())

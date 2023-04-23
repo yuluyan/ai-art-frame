@@ -3,6 +3,7 @@ import datetime
 import json
 import uuid
 import os
+import time
 import typing
 
 from generator import ImageGenerator, OpenAIImageGenerator
@@ -25,6 +26,8 @@ class ImageManager:
         
         self.records_path = os.path.join(self.folder, "records.json")
 
+        self.is_generating = False
+
     def uuid_to_path(self, uuid: str) -> str:
         return os.path.join(self.folder, f"{uuid}.png")
 
@@ -43,7 +46,14 @@ class ImageManager:
     def generate(self, title: str, prompt: str) -> ImageRecord:
         if self.generator is None:
             raise ValueError("No generator provided for image manager.")
-        image = self.generator.generate(prompt)
+
+        self.is_generating = True
+        try:
+            image = self.generator.generate(prompt)
+        except Exception:
+            raise
+        finally:
+            self.is_generating = False
         image_uuid = str(uuid.uuid4())
         image_path = self.uuid_to_path(image_uuid)
         image.save(image_path, "PNG")
@@ -54,6 +64,20 @@ class ImageManager:
         self._save_records(records)
 
         return record
+
+    def monitor_progress(self, callback) -> typing.NoReturn:
+        # Wait for the generator to start generating
+        while not self.is_generating:
+            time.sleep(0.2)
+
+        prev_progress = -1
+        while self.is_generating:
+            progress = self.generator.get_progress()
+            if progress > prev_progress:
+                callback(progress)
+                prev_progress = progress
+
+            time.sleep(0.2)
 
     def get_all_records(self) -> typing.List[ImageRecord]:
         records = self._read_records()
