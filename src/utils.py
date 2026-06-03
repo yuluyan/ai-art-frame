@@ -17,7 +17,7 @@ def get_sd_port():
     return api_key
 
 def resize_image(image, width, height):
-    return image.resize((width, height), Image.ANTIALIAS)
+    return image.resize((width, height), Image.LANCZOS)
 
 def date_serializer(obj):
     if isinstance(obj, date):

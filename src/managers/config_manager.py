@@ -35,7 +35,7 @@ class ConfigManager:
         self.configs = self._read_configs()
 
         self.initialize_configs(overwrite=reinitialize)
-        
+
     def _read_configs(self) -> typing.List[ConfigGroup]:
         if not os.path.exists(self.configs_path):
             return []
@@ -48,10 +48,47 @@ class ConfigManager:
         with open(self.configs_path, 'w') as f:
             json.dump([serialize_config_group(g) for g in self.configs], f, indent=2)
 
-    def _initialize_configs(self, configs: typing.List[ConfigGroup], overwrite=False) -> None:
+    @staticmethod
+    def _value_compatible(item: ConfigItem, old_value: typing.Any, old_type: str) -> bool:
+        """Whether a previously-stored value can be carried over to a new schema item."""
+        if old_type != item.type and not (old_type == "int" and item.type == "float"):
+            return False
+        # str dropdowns: the saved value must still be one of the offered choices,
+        # otherwise CTkOptionMenu would show a stale out-of-range entry.
+        if item.type == "str" and isinstance(item.range, list):
+            return old_value in item.range
+        return True
+
+    def _initialize_configs(self, code_configs: typing.List[ConfigGroup], overwrite=False) -> None:
+        """Reconcile the on-disk config with the code-defined schema.
+
+        The code schema is authoritative for structure (label/type/range/order),
+        while the user's previously-saved *values* are preserved for any item
+        whose name still exists. Obsolete items/groups (e.g. the old Stable
+        Diffusion settings) are dropped; brand-new items take their defaults.
+        """
         if overwrite or (not os.path.exists(self.configs_path)):
-            self.configs = copy.deepcopy(configs)
+            self.configs = copy.deepcopy(code_configs)
             self._save_configs()
+            return
+
+        existing = {}
+        for group in self.configs:
+            for item in group.items:
+                existing[item.name] = (item.value, item.type)
+
+        reconciled = copy.deepcopy(code_configs)
+        for group in reconciled:
+            for item in group.items:
+                if item.name in existing:
+                    old_value, old_type = existing[item.name]
+                    if self._value_compatible(item, old_value, old_type):
+                        if item.type == "float" and isinstance(old_value, int):
+                            old_value = float(old_value)
+                        item.value = old_value
+
+        self.configs = reconciled
+        self._save_configs()
 
     def initialize_configs(self, overwrite=False) -> None:
         config_group_general = ConfigGroup(
@@ -64,83 +101,58 @@ class ConfigManager:
             ]
         )
 
-        config_group_generator = ConfigGroup(
-            name="stable_diffusion_configs", 
-            label="Stable Diffusion Settings", 
+        config_group_gpt_image = ConfigGroup(
+            name="gpt_image_configs",
+            label="Image Generation",
             items=[
-                ConfigItem("model", "Model", "str", "stable_diffusion-v1.5", 
+                ConfigItem("size", "Size", "str", "1024x1536",
                     [
-                        "stable_diffusion-v1.5",
-                        "aom-v3a1b",
-                        "chillout_mix",
-                        "urpm-v13",
+                        "auto",
+                        "1024x1024",
+                        "1536x1024",
+                        "1024x1536",
                     ]
                 ),
-                ConfigItem("steps", "Steps", "int", 25, (1, 150, 1)),
-                ConfigItem("cfg_scale", "CFG", "float", 7.0, (1.0, 30.0, 0.1)),
-                ConfigItem("width", "Width", "int", 512, (64, 2048, 16)),
-                ConfigItem("height", "Height", "int", 512, (64, 2048, 16)),
-                ConfigItem("restore_faces", "Restore Faces", "bool", False, None),
-                ConfigItem("sampler_name", "Sampler", "str", "DPM++ SDE Karras", 
+                ConfigItem("quality", "Quality", "str", "auto",
                     [
-                        "Euler a", 
-                        "Euler", 
-                        "LMS", 
-                        "Heun", 
-                        "DPM2", 
-                        "DPM2 a", 
-                        "DPM++ 2S a", 
-                        "DPM++ 2M", 
-                        "DPM++ SDE", 
-                        "DPM fast", 
-                        "DPM adaptive", 
-                        "LMS Karras",
-                        "DPM2 Karras",
-                        "DPM2 a Karras",
-                        "DPM++ 2S a Karras",
-                        "DPM++ 2M Karras", 
-                        "DPM++ SDE Karras",
-                        "DDIM",
-                        "PLMS",
-                        "UniPC",
+                        "auto",
+                        "high",
+                        "medium",
+                        "low",
                     ]
                 ),
-                ConfigItem("enable_hr", "Hyper Resolution", "bool", True, None),
-                ConfigItem("denoising_strength", "Denoise Strength", "float", 0.7, (0.0, 1.0, 0.01)),
-                # ConfigItem("firstphase_width", "First Phase Width", "int", 720, (64, 2048, 16)),
-                # ConfigItem("firstphase_height", "First Phase Height", "int", 720, (64, 2048, 16)),
-                # ConfigItem("hr_scale", "Height", "int", 720, (64, 2048, 16)),
-                ConfigItem("hr_upscaler", "Upscaler", "str", "ESRGAN_4x", 
+                ConfigItem("background", "Background", "str", "auto",
                     [
-                        "Latent",
-                        "Latent (antialiased)",
-                        "Latent (bicubic)",
-                        "Latent (bicubic antialiased)",
-                        "Latent (nearest)",
-                        "Latent (nearest-exact)",
-                        "None",
-                        "Lanczos",
-                        "Nearest",
-                        "ESRGAN_4x",
-                        "LDSR",
-                        "R-ESRGAN 4x+",
-                        "R-ESRGAN_4x+ Anime6B",
-                        "ScuNET GAN",
-                        "ScuNET PSNR",
-                        "SwinIR 4x",
+                        "auto",
+                        "opaque",
+                        "transparent",
                     ]
                 ),
-                ConfigItem("hr_second_pass_steps", "Second Pass Steps", "int", 0, (0, 150, 1)),
-                ConfigItem("hr_resize_x", "Hyper Res Width", "int", 720, (64, 2048, 16)),
-                ConfigItem("hr_resize_y", "Hyper Res Height", "int", 832, (64, 2048, 16)),
+            ]
+        )
+
+        config_group_rotation = ConfigGroup(
+            name="rotation_configs",
+            label="Rotation",
+            items=[
+                ConfigItem("rotation_enabled", "Auto Rotate", "bool", False, None),
+                ConfigItem("rotation_mode", "Rotate Mode", "str", "sequential",
+                    [
+                        "sequential",
+                        "shuffle",
+                        "newest",
+                    ]
+                ),
+                ConfigItem("rotation_interval", "Interval (min)", "int", 10, (1, 240, 1)),
             ]
         )
 
         configs = [
             config_group_general,
-            config_group_generator,
+            config_group_gpt_image,
+            config_group_rotation,
         ]
-        
+
         self._initialize_configs(configs, overwrite=overwrite)
 
     def find_config_group_index(self, group_name: str) -> int:
@@ -180,7 +192,7 @@ class ConfigManager:
 
     def get_all_configs(self) -> typing.List[ConfigGroup]:
         return self.configs
-    
+
     def get_config(self, item_name, do_raise=False) -> typing.Optional[ConfigItem]:
         group_index, item_index = self.find_config_item_index(item_name)
 

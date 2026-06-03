@@ -1,6 +1,10 @@
 import datetime
 import os
+import queue
+import random
 import threading
+
+import qrcode
 from PIL import Image, ImageTk
 
 import tkinter as tk
@@ -9,6 +13,7 @@ import customtkinter as ctk
 from managers.image_manager import ImageManager
 from managers.config_manager import ConfigManager
 from managers.voice_manager import VoiceManager, standard_recognize
+from managers import sync_manager
 from prompt import speech_to_prompt
 from utils import resize_image
 
@@ -119,6 +124,20 @@ class App(ctk.CTk):
         self.image_manager: ImageManager = None
         self.config_manager: ConfigManager = None
 
+        self.upload_server = None
+
+        # Cross-thread GUI updates (upload server / sync worker) are marshaled
+        # onto the Tk main thread through this queue, drained by _drain_ui_queue.
+        self._ui_queue = queue.Queue()
+
+        # Auto-rotation (slideshow) state.
+        self.rotation_enabled = False
+        self.rotation_mode = "sequential"
+        self.rotation_interval = 10
+        self._rotation_after_id = None
+
+        self.qr_image_buffer = None
+
         self.voice_control = VoiceManager()
         self.voice_control.disable_background_listening = True
         self.voice_control.register_trigger_phrases(
@@ -189,8 +208,10 @@ class App(ctk.CTk):
         # menu buttons
         self.menu_frame = tk.Frame(self, bg="#141414")
         self.reset_button = BlockButton(self, "new", "#8df0ad", 15, command=self.button_command_newimage)
+        self.upload_button = BlockButton(self, "upload", "#c792ea", 15, command=self.button_command_upload)
         self.history_button = BlockButton(self, "history", "#76b5c5", 15, command=self.show_history_frame)
         self.setting_button = BlockButton(self, "setting", "#ffcc66", 15, command=self.show_setting_frame)
+        self.sync_button = BlockButton(self, "sync", "#82aaff", 15, command=self.button_command_sync)
         self.close_overlay_button = BlockButton(self, "close", "#b3b3b3", 15, command=self.hide_overlay)
         self.exit_button = BlockButton(self, "exit", "#ff5447", 15, command=self.exit)
         
@@ -199,7 +220,6 @@ class App(ctk.CTk):
         self.listen_text =  tk.StringVar()
         self.listen_status = tk.Label(self, textvariable=self.listen_text, bg="#141414", fg="#fff7e3", font=("Consolas", 12, "bold"), wraplength=500, justify="center")
         self.listen_progressbar = ctk.CTkProgressBar(self, mode="indeterminate", indeterminate_speed=1.5, width=400, height=20, progress_color="#fff7e3", corner_radius=0)
-        self.generation_progressbar = ctk.CTkProgressBar(self, mode="determinate", width=600, height=20, progress_color="#fff7e3", corner_radius=0)
 
         # history frame
         self.history_frame_width = int(self.width * 0.8)
@@ -215,6 +235,36 @@ class App(ctk.CTk):
         self.setting_save_button = BlockButton(self, "save", "#8df0ad", 15, command=self.save_setting)
         self.setting_close_button = BlockButton(self, "cancel", "#ff5447", 15, command=self.hide_setting_frame)
 
+        # upload info overlay (URL + QR code)
+        self.upload_frame = tk.Frame(self, bg="#141414")
+        self.upload_qr_label = tk.Label(self, bg="#fffef5", bd=0, highlightthickness=0)
+        self.upload_title_label = tk.Label(self, text="UPLOAD IMAGES", bg="#141414", fg="#fff7e3", font=("Consolas", 22, "bold"))
+        self.upload_url_label = tk.Label(self, bg="#141414", fg="#8df0ad", font=("Consolas", 20, "bold"))
+        self.upload_hint_label = tk.Label(self, bg="#141414", fg="#b9b29c", font=("Consolas", 14), wraplength=560, justify="center")
+        self.upload_close_button = BlockButton(self, "close", "#b3b3b3", 15, command=self.hide_upload_info)
+
+        # Drain cross-thread UI work on the main loop.
+        self.after(50, self._drain_ui_queue)
+
+    def _drain_ui_queue(self):
+        try:
+            while True:
+                fn = self._ui_queue.get_nowait()
+                try:
+                    fn()
+                except Exception as e:
+                    print(f"UI task error: {e}")
+        except queue.Empty:
+            pass
+        self.after(50, self._drain_ui_queue)
+
+    def run_on_ui(self, fn):
+        """Schedule `fn` to run on the Tk main thread (safe from any thread)."""
+        self._ui_queue.put(fn)
+
+    def set_upload_server(self, server):
+        self.upload_server = server
+
     def configure_general_configs(self):
         do_resize = self.config_manager.get_config_value("do_resize", do_raise=False)
         if do_resize is not None:
@@ -228,6 +278,11 @@ class App(ctk.CTk):
                 self.set_image(last_record.uuid)
 
         self.enable_chatgpt = self.config_manager.get_config_value("enable_chatgpt", do_raise=False)
+
+        self.rotation_enabled = bool(self.config_manager.get_config_value("rotation_enabled", do_raise=False))
+        self.rotation_mode = self.config_manager.get_config_value("rotation_mode", do_raise=False) or "sequential"
+        self.rotation_interval = self.config_manager.get_config_value("rotation_interval", do_raise=False) or 10
+        self._reschedule_rotation()
 
     def set_managers(self, image_manager: ImageManager, config_manager: ConfigManager):
         self.image_manager = image_manager
@@ -316,25 +371,31 @@ class App(ctk.CTk):
                 self.canvas.update()
 
     def show_menu(self):
-        top = (self.height - 600) // 2
-        self.menu_frame.place(relx=0.5, y=top, anchor=tk.N, width=600, height=600)
-        self.reset_button.place(relx=0.5, y=50 + top, anchor=tk.CENTER, width = 600, height = 100)
-        self.history_button.place(relx=0.5, y=150 + top, anchor=tk.CENTER, width = 600, height = 100)
-        self.setting_button.place(relx=0.5, y=250 + top, anchor=tk.CENTER, width = 600, height = 100)
-        self.close_overlay_button.place(relx=0.5, y=350 + top, anchor=tk.CENTER, width = 600, height = 100)
-        self.exit_button.place(relx=0.5, y=550 + top, anchor=tk.CENTER, width = 600, height = 100)
-        
+        menu_h = 680
+        top = (self.height - menu_h) // 2
+        self.menu_frame.place(relx=0.5, y=top, anchor=tk.N, width=600, height=menu_h)
+        self.reset_button.place(relx=0.5, y=50 + top, anchor=tk.CENTER, width=600, height=80)
+        self.upload_button.place(relx=0.5, y=140 + top, anchor=tk.CENTER, width=600, height=80)
+        self.history_button.place(relx=0.5, y=230 + top, anchor=tk.CENTER, width=600, height=80)
+        self.setting_button.place(relx=0.5, y=320 + top, anchor=tk.CENTER, width=600, height=80)
+        self.sync_button.place(relx=0.5, y=410 + top, anchor=tk.CENTER, width=600, height=80)
+        self.close_overlay_button.place(relx=0.5, y=500 + top, anchor=tk.CENTER, width=600, height=80)
+        self.exit_button.place(relx=0.5, y=620 + top, anchor=tk.CENTER, width=600, height=80)
+
     def hide_menu(self):
         self.menu_frame.place_forget()
         self.reset_button.place_forget()
+        self.upload_button.place_forget()
         self.history_button.place_forget()
         self.setting_button.place_forget()
+        self.sync_button.place_forget()
         self.close_overlay_button.place_forget()
         self.exit_button.place_forget()
 
     def show_overlay(self, event=None):
         if not self.overlay_active:
             self.overlay_active = True
+            self._cancel_rotation()
             self.fade("in")
             self.show_menu()
 
@@ -343,6 +404,7 @@ class App(ctk.CTk):
             self.overlay_active = False
             self.hide_menu()
             self.fade("out")
+            self._reschedule_rotation()
 
     def show_listen_status(self):
         self.listen_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER, width=600, height=400)
@@ -369,26 +431,143 @@ class App(ctk.CTk):
         self.listen_frame.place_forget()
         self.update()
 
+    def _dismiss_status_overlay(self):
+        self.hide_listen_progressbar()
+        self.hide_listen_status()
+        self.hide_overlay()
+
+    # ---- image upload (web) ----
+    def button_command_upload(self):
+        self.hide_menu()
+        if self.upload_server is None:
+            self.show_listen_status()
+            self.update_listen_status("Upload server is not running.")
+            self.after(2500, self._dismiss_status_overlay)
+            return
+        self.show_upload_info(self.upload_server.get_url())
+
+    def show_upload_info(self, url):
+        try:
+            qr = qrcode.make(url).convert("RGB").resize((460, 460), Image.NEAREST)
+            self.qr_image_buffer = ImageTk.PhotoImage(qr)
+            self.upload_qr_label.configure(image=self.qr_image_buffer)
+        except Exception as e:
+            print(f"QR generation failed: {e}")
+            self.qr_image_buffer = None
+
+        fw, fh = 640, 820
+        top = (self.height - fh) // 2
+        self.upload_frame.place(relx=0.5, y=top, anchor=tk.N, width=fw, height=fh)
+        self.upload_title_label.place(relx=0.5, y=top + 40, anchor=tk.N)
+        if self.qr_image_buffer is not None:
+            self.upload_qr_label.place(relx=0.5, y=top + 100, anchor=tk.N, width=460, height=460)
+        self.upload_url_label.configure(text=url)
+        self.upload_url_label.place(relx=0.5, y=top + 590, anchor=tk.N)
+        self.upload_hint_label.configure(text="Open this address on a phone on the same Wi-Fi, then pick images to send.")
+        self.upload_hint_label.place(relx=0.5, y=top + 630, anchor=tk.N, width=560)
+        self.upload_close_button.place(relx=0.5, y=top + 730, anchor=tk.N, width=300, height=70)
+        self.update()
+
+    def hide_upload_info(self):
+        self.upload_frame.place_forget()
+        self.upload_qr_label.place_forget()
+        self.upload_title_label.place_forget()
+        self.upload_url_label.place_forget()
+        self.upload_hint_label.place_forget()
+        self.upload_close_button.place_forget()
+        self.show_menu()
+
+    def handle_uploaded_image(self, pil_image, title):
+        """Ingest an uploaded image. Called from the web-server worker thread."""
+        record = self.image_manager.save_uploaded_image(pil_image, title)
+
+        def _apply():
+            self.history_frame.add_item(record)
+            if not self.overlay_active:
+                self.set_image(record.uuid)
+
+        self.run_on_ui(_apply)
+
+    # ---- code sync ----
+    def button_command_sync(self):
+        self.hide_menu()
+        self.show_listen_status()
+        self.update_listen_status("Starting sync...")
+        threading.Thread(target=self._run_sync, daemon=True).start()
+
+    def _run_sync(self):
+        result = sync_manager.perform_sync(
+            status=lambda msg: self.run_on_ui(lambda m=msg: self.update_listen_status(m))
+        )
+
+        def _finish():
+            self.update_listen_status(result["message"])
+            if result["ok"] and result["updated"]:
+                self.after(1200, self._restart_app)
+            else:
+                self.after(3500, self._dismiss_sync)
+
+        self.run_on_ui(_finish)
+
+    def _dismiss_sync(self):
+        self.hide_listen_status()
+        self.hide_overlay()
+
+    def _restart_app(self):
+        try:
+            self.voice_control.stop()
+        except Exception:
+            pass
+        try:
+            self.destroy()
+        finally:
+            sync_manager.restart_process()
+
+    # ---- auto-rotation (slideshow) ----
+    def _cancel_rotation(self):
+        if self._rotation_after_id is not None:
+            try:
+                self.after_cancel(self._rotation_after_id)
+            except Exception:
+                pass
+            self._rotation_after_id = None
+
+    def _reschedule_rotation(self):
+        self._cancel_rotation()
+        if self.rotation_enabled:
+            interval_ms = max(1, int(self.rotation_interval)) * 60 * 1000
+            self._rotation_after_id = self.after(interval_ms, self._rotate)
+
+    def _rotate(self):
+        self._rotation_after_id = None
+        if (self.rotation_enabled and not self.overlay_active
+                and self.image_manager is not None and not self.image_manager.is_generating):
+            records = self.image_manager.get_all_records()
+            if len(records) >= 2:
+                next_uuid = self._pick_next_image(records)
+                if next_uuid:
+                    self.set_image(next_uuid)
+        self._reschedule_rotation()
+
+    def _pick_next_image(self, records):
+        uuids = [r.uuid for r in records]
+        if self.rotation_mode == "shuffle":
+            candidates = [u for u in uuids if u != self.image_uuid] or uuids
+            return random.choice(candidates)
+        ordered = list(reversed(uuids)) if self.rotation_mode == "newest" else uuids
+        if self.image_uuid in ordered:
+            idx = ordered.index(self.image_uuid)
+            return ordered[(idx + 1) % len(ordered)]
+        return ordered[0]
+
     def exit(self):
+        self._cancel_rotation()
         self.voice_control.stop()
         self.destroy()
 
     def button_command_newimage(self):
         self.hide_menu()
         self.voice_control.trigger("generate")
-    
-    def show_generation_progressbar(self):
-        self.generation_progressbar.set(0.0)
-        self.generation_progressbar.place(relx=0.5, y=self.height / 2 + 200, anchor=tk.N)
-        self.update()
-    
-    def hide_generation_progressbar(self):
-        self.generation_progressbar.place_forget()
-        self.update()
-
-    def update_generation_progressbar(self, progress):
-        self.generation_progressbar.set(progress)
-        self.update()
 
     def voice_callback_newimage(self, speech, mic, rec):
         self.show_listen_status()
@@ -431,14 +610,18 @@ class App(ctk.CTk):
                 _status_callback(f"Could not generate prompt: {e}")
                 prompt = speech
         
-        self.show_generation_progressbar()
+        # gpt-image-2 has no progress endpoint, so show an indeterminate spinner
+        # while the single blocking generate() call runs.
+        self.show_listen_progressbar()
+        try:
+            record = self.image_manager.generate(title, prompt)
+        except Exception as e:
+            _status_callback(f"Generation failed: {e}")
+            self.hide_listen_progressbar()
+            self.after(3500, self._dismiss_status_overlay)
+            return
 
-        self.listen_thread = threading.Thread(target=lambda: self.image_manager.monitor_progress(self.update_generation_progressbar))
-        self.listen_thread.start()
-        record = self.image_manager.generate(title, prompt)
-        self.listen_thread.join()
-
-        self.hide_generation_progressbar()
+        self.hide_listen_progressbar()
         self.hide_listen_status()
 
         self.set_image(record.uuid)
@@ -484,10 +667,10 @@ class App(ctk.CTk):
 
 if __name__ == "__main__":
     import os
-    from generator import OpenAIImageGenerator, LocalStableDiffusionImageGenerator
+    from generator import OpenAIImageGenerator
     from managers.image_manager import ImageManager
 
-    image_manager = ImageManager(os.path.join(os.path.dirname(__file__), '..', 'imgs'), LocalStableDiffusionImageGenerator())
+    image_manager = ImageManager(os.path.join(os.path.dirname(__file__), '..', 'imgs'), OpenAIImageGenerator())
     config_manager = ConfigManager()
 
     app = App()

@@ -3,8 +3,10 @@ import datetime
 import json
 import uuid
 import os
-import time
+import threading
 import typing
+
+from PIL import Image
 
 from generator import ImageGenerator, OpenAIImageGenerator
 from managers.config_manager import ConfigManager
@@ -23,10 +25,13 @@ class ImageManager:
     def __init__(self, folder: str, generator: typing.Optional[ImageGenerator]=None):
         self.folder = folder
         self.generator = generator
-        
+
         self.records_path = os.path.join(self.folder, "records.json")
 
         self.is_generating = False
+        # Generation (voice thread) and uploads (web-server thread) can both
+        # append records, so the read-modify-write of records.json is guarded.
+        self._records_lock = threading.RLock()
 
     def uuid_to_path(self, uuid: str) -> str:
         return os.path.join(self.folder, f"{uuid}.png")
@@ -43,6 +48,27 @@ class ImageManager:
         with open(self.records_path, 'w') as f:
             json.dump(records, f, indent=2, default=date_serializer)
 
+    def _store_image(self, image: Image.Image, title: str, prompt: str, model: str) -> ImageRecord:
+        """Persist a PIL image as a PNG on disk and append its record. Thread-safe.
+
+        Images are always stored as PNG regardless of how they were produced, so
+        `uuid_to_path` and every consumer can assume a single on-disk format.
+        """
+        if image.mode not in ("RGB", "RGBA"):
+            image = image.convert("RGB")
+
+        image_uuid = str(uuid.uuid4())
+        image_path = self.uuid_to_path(image_uuid)
+        image.save(image_path, "PNG")
+
+        record = ImageRecord(image_uuid, prompt, title, datetime.date.today(), model)
+        with self._records_lock:
+            records = self._read_records()
+            records.append(dataclasses.asdict(record))
+            self._save_records(records)
+
+        return record
+
     def generate(self, title: str, prompt: str) -> ImageRecord:
         if self.generator is None:
             raise ValueError("No generator provided for image manager.")
@@ -50,57 +76,41 @@ class ImageManager:
         self.is_generating = True
         try:
             image = self.generator.generate(prompt)
-        except Exception:
-            raise
         finally:
             self.is_generating = False
-        image_uuid = str(uuid.uuid4())
-        image_path = self.uuid_to_path(image_uuid)
-        image.save(image_path, "PNG")
 
-        record = ImageRecord(image_uuid, prompt, title, datetime.date.today(), self.generator.get_model())
-        records = self._read_records()
-        records.append(dataclasses.asdict(record))
-        self._save_records(records)
+        return self._store_image(image, title, prompt, self.generator.get_model())
 
-        return record
-
-    def monitor_progress(self, callback) -> typing.NoReturn:
-        # Wait for the generator to start generating
-        while not self.is_generating:
-            time.sleep(0.2)
-
-        prev_progress = -1
-        while self.is_generating:
-            progress = self.generator.get_progress()
-            if progress > prev_progress:
-                callback(progress)
-                prev_progress = progress
-
-            time.sleep(0.2)
+    def save_uploaded_image(self, image: Image.Image, title: str) -> ImageRecord:
+        """Ingest a user-uploaded image as a new gallery entry."""
+        return self._store_image(image, title, title, "Upload")
 
     def get_all_records(self) -> typing.List[ImageRecord]:
-        records = self._read_records()
+        with self._records_lock:
+            records = self._read_records()
         return [ImageRecord(**record) for record in records]
 
     def delete_record(self, target_uuid) -> None:
-        records = self._read_records()
-        records = [record for record in records if record["uuid"] != target_uuid]
-        self._save_records(records)
+        with self._records_lock:
+            records = self._read_records()
+            records = [record for record in records if record["uuid"] != target_uuid]
+            self._save_records(records)
 
         image_path = self.uuid_to_path(str(target_uuid))
         if os.path.exists(image_path):
             os.remove(image_path)
-    
+
     def get_last_record(self) -> ImageRecord:
-        records = self._read_records()
+        with self._records_lock:
+            records = self._read_records()
         if len(records) == 0:
             return None
         else:
             return ImageRecord(**records[-1])
 
     def get_record_count(self) -> int:
-        return len(self._read_records())
+        with self._records_lock:
+            return len(self._read_records())
 
     def update_generator_config(self, config_manager: ConfigManager) -> None:
         if self.generator is None:
@@ -108,7 +118,8 @@ class ImageManager:
         self.generator.configure(config_manager)
 
     def get_record(self, uuid: str) -> typing.Optional[ImageRecord]:
-        records = self._read_records()
+        with self._records_lock:
+            records = self._read_records()
         for record in records:
             if record["uuid"] == uuid:
                 return ImageRecord(**record)
@@ -119,8 +130,4 @@ if __name__ == "__main__":
         os.path.join(os.path.dirname(__file__), '..', 'imgs'),
         OpenAIImageGenerator()
     )
-    # im.generate("Hello world")
-    # im.generate("Abstract art, art station")
-    # im.generate("Trees, nature, forest")
-
     print(im.get_all_records())
