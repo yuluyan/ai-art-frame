@@ -538,6 +538,11 @@ class App(ctk.CTk):
 
     def button_command_newimage(self):
         self.hide_menu()
+        if not self.voice_control.available:
+            self.show_listen_status()
+            self.update_listen_status("Microphone not available.")
+            self.after(2500, self._dismiss_status_overlay)
+            return
         self.voice_control.trigger("generate")
 
     def voice_callback_newimage(self, speech, mic, rec):

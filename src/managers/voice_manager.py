@@ -55,9 +55,22 @@ def standard_recognize(
 
 
 class VoiceManager:
-    def __init__(self):
+    def __init__(self, device_index=None):
         self.recognizer = sr.Recognizer()
-        self.microphone = sr.Microphone()
+
+        # The default ALSA/PortAudio input device may be an output-only card
+        # (e.g. HDMI), which makes sr.Microphone() raise on init. Pick a device
+        # that can actually capture, and keep the app alive if none exists.
+        self.microphone = None
+        self.available = False
+        try:
+            index = device_index if device_index is not None else self._find_input_device()
+            if index is None:
+                raise RuntimeError("no input-capable audio device found")
+            self.microphone = sr.Microphone(device_index=index)
+            self.available = True
+        except Exception as e:
+            print(f"Voice control disabled (no usable microphone): {e}")
 
         self.recognizer.pause_threshold = 1
         self.microphone_loop_duration = 5
@@ -72,6 +85,28 @@ class VoiceManager:
         self.microphone_lock = threading.Lock()
         
         self.disable_background_listening = False
+
+    @staticmethod
+    def _find_input_device():
+        """PyAudio index of a usable input device, or None.
+
+        Prefers the system default input, then falls back to the first device
+        that reports input channels (e.g. a USB mic that isn't the default)."""
+        pa = sr.Microphone.get_pyaudio().PyAudio()
+        try:
+            try:
+                info = pa.get_default_input_device_info()
+                if info and info.get("maxInputChannels", 0) > 0:
+                    return info["index"]
+            except Exception:
+                pass
+            for i in range(pa.get_device_count()):
+                info = pa.get_device_info_by_index(i)
+                if info.get("maxInputChannels", 0) > 0:
+                    return i
+        finally:
+            pa.terminate()
+        return None
 
     def register_trigger_phrases(
         self, 
@@ -153,6 +188,9 @@ class VoiceManager:
             time.sleep(self.microphone_loop_pause)
 
     def start(self):
+        if not self.available:
+            print("Voice control unavailable; listener not started.")
+            return
         self.running = True
 
         self.listen_thread = threading.Thread(target=self._listen_for_commands)
@@ -164,6 +202,8 @@ class VoiceManager:
         self.process_thread.start()
 
     def stop(self):
+        if not self.running:
+            return
         self.running = False
         self.modal = False
 
@@ -171,6 +211,8 @@ class VoiceManager:
         self.process_thread.join()
 
     def trigger(self, phrase):
+        if not self.available:
+            return
         if phrase in self.phrase_mapping:
             id = self.phrase_mapping[phrase]
             speech = phrase
