@@ -1,6 +1,7 @@
 import dataclasses
 import datetime
 import json
+import logging
 import uuid
 import os
 import threading
@@ -11,6 +12,8 @@ from PIL import Image
 from generator import ImageGenerator, OpenAIImageGenerator
 from managers.config_manager import ConfigManager
 from utils import date_serializer, date_deserializer
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -39,14 +42,20 @@ class ImageManager:
     def _read_records(self) -> typing.List[ImageRecord]:
         if not os.path.exists(self.records_path):
             return []
-        else:
+        try:
             with open(self.records_path, 'r') as f:
-                records = json.load(f, object_hook=date_deserializer)
-            return records
+                return json.load(f, object_hook=date_deserializer)
+        except (json.JSONDecodeError, OSError) as e:
+            logger.error(f"records.json unreadable ({e}); starting with no history")
+            return []
 
     def _save_records(self, records: typing.List[ImageRecord]) -> None:
-        with open(self.records_path, 'w') as f:
+        # Write atomically so a crash/power-loss mid-write can't truncate the
+        # file and brick the gallery on next start.
+        tmp = self.records_path + ".tmp"
+        with open(tmp, 'w') as f:
             json.dump(records, f, indent=2, default=date_serializer)
+        os.replace(tmp, self.records_path)
 
     def _store_image(self, image: Image.Image, title: str, prompt: str, model: str) -> ImageRecord:
         """Persist a PIL image as a PNG on disk and append its record. Thread-safe.

@@ -1,8 +1,11 @@
 import copy
 import dataclasses
 import json
+import logging
 import os
 import typing
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -39,14 +42,20 @@ class ConfigManager:
     def _read_configs(self) -> typing.List[ConfigGroup]:
         if not os.path.exists(self.configs_path):
             return []
-        else:
+        try:
             with open(self.configs_path, 'r') as f:
                 configs = json.load(f)
             return [deserialize_config_group(g) for g in configs]
+        except (json.JSONDecodeError, OSError, KeyError, TypeError) as e:
+            logger.error(f"configs.json unreadable ({e}); rebuilding from defaults")
+            return []
 
     def _save_configs(self) -> None:
-        with open(self.configs_path, 'w') as f:
+        # Atomic write so a crash mid-save can't corrupt the config.
+        tmp = self.configs_path + ".tmp"
+        with open(tmp, 'w') as f:
             json.dump([serialize_config_group(g) for g in self.configs], f, indent=2)
+        os.replace(tmp, self.configs_path)
 
     @staticmethod
     def _value_compatible(item: ConfigItem, old_value: typing.Any, old_type: str) -> bool:
@@ -180,7 +189,7 @@ class ConfigManager:
         try:
             self._modify_config_item(item_name, value)
         except ValueError as e:
-            print(f"Error modifying config item {item_name}: {e}. Leaving unchanged.")
+            logger.warning(f"Error modifying config item {item_name}: {e}. Leaving unchanged.")
 
     def get_all_configs(self) -> typing.List[ConfigGroup]:
         return self.configs
@@ -192,13 +201,14 @@ class ConfigManager:
             if do_raise:
                 raise ValueError(f"Config item {item_name} not found")
             else:
-                print(f"Error getting config item {item_name}. Returning None.")
+                logger.warning(f"Config item {item_name} not found; returning None.")
                 return None
 
         return self.configs[group_index].items[item_index]
 
     def get_config_value(self, item_name, do_raise=False) -> typing.Any:
-        return self.get_config(item_name, do_raise=do_raise).value
+        config = self.get_config(item_name, do_raise=do_raise)
+        return config.value if config is not None else None
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import logging
 import queue
 import uuid
 import threading
@@ -9,6 +10,7 @@ import speech_recognition as sr
 
 from utils import get_openai_key
 
+logger = logging.getLogger(__name__)
 
 OPENAI_TRANSCRIBE_URL = "https://api.openai.com/v1/audio/transcriptions"
 TRANSCRIBE_MODEL = "whisper-1"
@@ -32,11 +34,11 @@ def transcribe_audio(audio_data, model: str = TRANSCRIBE_MODEL) -> typing.Option
 
 
 def standard_recognize(
-    microphone: sr.Microphone, 
-    recognizer: sr.Recognizer, 
-    timeout: typing.Optional[int], 
-    start_callback: typing.Optional[typing.Callable[[], typing.NoReturn]] = None, 
-    end_callback: typing.Optional[typing.Callable[[], typing.NoReturn]] = None,
+    microphone: sr.Microphone,
+    recognizer: sr.Recognizer,
+    timeout: typing.Optional[int],
+    start_callback: typing.Optional[typing.Callable[[], None]] = None,
+    end_callback: typing.Optional[typing.Callable[[], None]] = None,
     *,
     to_lower: bool = True,
 ) -> typing.Optional[str]:
@@ -47,12 +49,12 @@ def standard_recognize(
                 start_callback()
             audio = recognizer.listen(source, timeout=timeout)
     except sr.WaitTimeoutError:
-        print("Listening timed out: no speech detected.")
+        logger.info("Listening timed out: no speech detected.")
         if end_callback:
             end_callback()
         return None
     except OSError as e:
-        print(f"Microphone error: {e}")
+        logger.warning(f"Microphone error: {e}")
         if end_callback:
             end_callback()
         return None
@@ -63,7 +65,7 @@ def standard_recognize(
     try:
         speech = transcribe_audio(audio)
     except Exception as e:
-        print(f"Transcription failed: {e}")
+        logger.warning(f"Transcription failed: {e}")
         speech = None
 
     if speech and to_lower:
@@ -73,6 +75,15 @@ def standard_recognize(
 
 
 class VoiceManager:
+    """Button-triggered, modal voice capture.
+
+    A trigger (e.g. the NEW button calling ``trigger("generate")``) enqueues a
+    command that the worker thread runs modally: it owns the mic, invokes the
+    registered callback (which listens, transcribes and generates), then frees
+    the mic. Continuous background listening was removed — it was permanently
+    disabled and unused.
+    """
+
     def __init__(self, device_index=None):
         self.recognizer = sr.Recognizer()
 
@@ -88,11 +99,10 @@ class VoiceManager:
             self.microphone = sr.Microphone(device_index=index)
             self.available = True
         except Exception as e:
-            print(f"Voice control disabled (no usable microphone): {e}")
+            logger.warning(f"Voice control disabled (no usable microphone): {e}")
 
         self.recognizer.pause_threshold = 1
-        self.microphone_loop_duration = 5
-        self.microphone_loop_pause = 0.1
+        self.loop_pause = 0.1
 
         self.trigger_models = {}
         self.phrase_mapping = {}
@@ -101,8 +111,7 @@ class VoiceManager:
         self.modal = False
         self.command_queue = queue.Queue()
         self.microphone_lock = threading.Lock()
-        
-        self.disable_background_listening = False
+        self.process_thread = None
 
     @staticmethod
     def _find_input_device():
@@ -127,21 +136,18 @@ class VoiceManager:
         return None
 
     def register_trigger_phrases(
-        self, 
-        phrases: typing.List[str], 
-        callback: typing.Callable[..., typing.NoReturn], 
-        wait_start_callback: typing.Optional[typing.Callable[..., typing.NoReturn]] = None, 
-        wait_end_callback: typing.Optional[typing.Callable[..., typing.NoReturn]] = None, 
-        priority: int = 0, 
-        modal: bool = False
+        self,
+        phrases: typing.List[str],
+        callback: typing.Callable[..., None],
+        wait_start_callback: typing.Optional[typing.Callable[..., None]] = None,
+        wait_end_callback: typing.Optional[typing.Callable[..., None]] = None,
+        modal: bool = False,
     ):
         phrases = [p.lower().strip(",.!?:;") for p in phrases]
         phrase_id = str(uuid.uuid4())
 
         self.trigger_models[phrase_id] = {
-            "phrases": phrases,
-            "priority": priority,
-            "modal": modal, 
+            "modal": modal,
             "callback": callback,
             "wait_start_callback": wait_start_callback,
             "wait_end_callback": wait_end_callback,
@@ -150,73 +156,46 @@ class VoiceManager:
         for p in phrases:
             self.phrase_mapping[p.lower()] = phrase_id
 
-    def _listen_for_commands(self):
-        while self.running and not self.disable_background_listening:
-            if not self.modal:
-                try:
-                    with self.microphone_lock:
-                        with self.microphone as source:
-                            self.recognizer.adjust_for_ambient_noise(source)
-                            audio = self.recognizer.listen(source, timeout=self.microphone_loop_duration)
-
-                    speech = transcribe_audio(audio)
-                    speech = (speech or "").lower()
-
-                    matched_id = []
-                    for trigger_phrase, phrase_id in self.phrase_mapping.items():
-                        if trigger_phrase in speech:
-                            matched_id.append(phrase_id)
-
-                    if matched_id:
-                        highest_priority = max([self.trigger_models[id]["priority"] for id in matched_id])
-                        for id in matched_id:
-                            if self.trigger_models[id]["priority"] == highest_priority:
-                                self.command_queue.put((id, speech))
-                                if self.trigger_models[id]["wait_start_callback"]:
-                                    self.trigger_models[id]["wait_start_callback"]()
-
-                except sr.RequestError as e:
-                    print(f"Could not request results from Whisper API: {e}")
-                    
-                except (sr.UnknownValueError, sr.WaitTimeoutError):
-                    pass
-
-            time.sleep(self.microphone_loop_pause)
-
     def _process_commands(self):
         while self.running:
             while not self.command_queue.empty():
-                id, speech = self.command_queue.get()
-                modal = self.trigger_models[id]["modal"]
-                callback = self.trigger_models[id]["callback"]
-                wait_end_callback = self.trigger_models[id]["wait_end_callback"]
+                cmd_id, speech = self.command_queue.get()
+                model = self.trigger_models.get(cmd_id)
+                if model is None:
+                    continue
+                callback = model["callback"]
+                wait_end_callback = model["wait_end_callback"]
 
-                if modal:
+                if model["modal"]:
+                    # Own the mic for the whole modal interaction; always clear
+                    # the modal flag even if the callback raises, or voice would
+                    # be stuck "busy" forever.
                     self.modal = True
-                    with self.microphone_lock:
+                    try:
+                        with self.microphone_lock:
+                            if wait_end_callback:
+                                wait_end_callback()
+                            callback(speech, self.microphone, self.recognizer)
+                            self.command_queue.queue.clear()
+                    except Exception as e:
+                        logger.exception(f"Voice command failed: {e}")
+                    finally:
+                        self.modal = False
+                else:
+                    try:
                         if wait_end_callback:
                             wait_end_callback()
-                        callback(speech, self.microphone, self.recognizer)
-                        self.command_queue.queue.clear()  # Clear the queue for modal commands
-                    self.modal = False
-                else:
-                    if wait_end_callback:
-                        wait_end_callback()
-                    callback(speech)
-            time.sleep(self.microphone_loop_pause)
+                        callback(speech)
+                    except Exception as e:
+                        logger.exception(f"Voice command failed: {e}")
+            time.sleep(self.loop_pause)
 
     def start(self):
         if not self.available:
-            print("Voice control unavailable; listener not started.")
+            logger.info("Voice control unavailable; worker not started.")
             return
         self.running = True
-
-        self.listen_thread = threading.Thread(target=self._listen_for_commands)
-        self.process_thread = threading.Thread(target=self._process_commands)
-        self.listen_thread.daemon = True
-        self.process_thread.daemon = True
-
-        self.listen_thread.start()
+        self.process_thread = threading.Thread(target=self._process_commands, daemon=True)
         self.process_thread.start()
 
     def stop(self):
@@ -224,18 +203,19 @@ class VoiceManager:
             return
         self.running = False
         self.modal = False
-
-        self.listen_thread.join()
-        self.process_thread.join()
+        # Daemon thread; bound the wait so shutdown/restart can't hang behind an
+        # in-flight generation (which can take minutes).
+        if self.process_thread is not None:
+            self.process_thread.join(timeout=2)
 
     def trigger(self, phrase):
         if not self.available:
             return
         if phrase in self.phrase_mapping:
-            id = self.phrase_mapping[phrase]
-            speech = phrase
-            self.command_queue.put((id, speech))
-            if self.trigger_models[id]["wait_start_callback"]:
-                self.trigger_models[id]["wait_start_callback"]()
+            cmd_id = self.phrase_mapping[phrase]
+            self.command_queue.put((cmd_id, phrase))
+            wait_start_callback = self.trigger_models[cmd_id]["wait_start_callback"]
+            if wait_start_callback:
+                wait_start_callback()
         else:
             raise ValueError(f"Phrase {phrase} not registered")

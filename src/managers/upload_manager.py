@@ -1,8 +1,15 @@
+import logging
 import socket
 import threading
 
 from PIL import Image, ImageOps
 from flask import Flask, request
+
+logger = logging.getLogger(__name__)
+
+# Cap decoded pixels so a decompression-bomb upload can't OOM the Pi. Pillow
+# raises DecompressionBombError past 2x this, which the upload handler catches.
+Image.MAX_IMAGE_PIXELS = 50_000_000
 
 
 UPLOAD_PAGE = """<!doctype html>
@@ -73,14 +80,16 @@ class UploadServer:
                 image = Image.open(storage.stream)
                 image = ImageOps.exif_transpose(image)
                 image.load()  # fully read before the request stream closes
-            except Exception:
+                image.thumbnail((2048, 2048), Image.LANCZOS)  # cap stored size / RAM
+            except Exception as e:
+                logger.warning(f"Skipping unreadable/oversized upload {storage.filename!r}: {e}")
                 continue
             title = storage.filename.rsplit(".", 1)[0].replace("_", " ").replace("-", " ").strip()
             try:
                 self.on_image(image, title or "Uploaded")
                 saved += 1
             except Exception as e:
-                print(f"Upload ingest failed: {e}")
+                logger.exception(f"Upload ingest failed: {e}")
 
         if saved:
             msg = f'<div class="msg">Added {saved} image(s) to the frame.</div>'

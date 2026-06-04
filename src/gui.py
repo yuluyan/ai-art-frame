@@ -1,4 +1,4 @@
-import os
+import logging
 import queue
 import random
 import threading
@@ -20,6 +20,7 @@ from gui_components.general import BlockButton
 from gui_components.history import GalleryItem
 from gui_components.setting import SettingGroupLabel, SettingItem
 
+logger = logging.getLogger(__name__)
 
 ctk.set_appearance_mode("dark")
 
@@ -43,7 +44,10 @@ class ScrollableGalleryFrame(ctk.CTkScrollableFrame):
 
         self.image_manager = image_manager
         for record in self.image_manager.get_all_records():
-            self.add_item(record)
+            try:
+                self.add_item(record)
+            except Exception as e:
+                logger.warning(f"Skipping gallery item {record.uuid}: {e}")
 
     def add_item(self, record):
         item = GalleryItem(
@@ -138,7 +142,6 @@ class App(ctk.CTk):
         self.qr_image_buffer = None
 
         self.voice_control = VoiceManager()
-        self.voice_control.disable_background_listening = True
         self.voice_control.register_trigger_phrases(
             ["generate"], self.voice_callback_newimage,
             wait_start_callback=lambda: self.run_on_ui(self.show_listen_progressbar),
@@ -172,16 +175,13 @@ class App(ctk.CTk):
         self.picture_image_buffer = ImageTk.PhotoImage(Image.new("RGB", (self.width, self.image_height), (0, 0, 0)))
         self.picture_buffer = self.canvas.create_image(self.width // 2, self.image_height // 2, image=self.picture_image_buffer, anchor=tk.CENTER)
 
-        # overlay
+        # overlay: a single dim layer behind the menu, toggled by fade()
         self.overlay_active = False
-        self.overlay_image_buffer = []
-        self.overlay_buffer = []
-        for alpha in range(0, 150, 149):
-            image = Image.new("RGBA", (self.width, self.image_height), (0, 0, 0, 0))
-            self.overlay_image_buffer.append(ImageTk.PhotoImage(image))
-            overlay_step = self.canvas.create_image(0, 0, image=self.overlay_image_buffer[-1], anchor="nw")
-            self.canvas.itemconfig(overlay_step, state='hidden')
-            self.overlay_buffer.append(overlay_step)
+        self.overlay_image_buffer = ImageTk.PhotoImage(
+            Image.new("RGBA", (self.width, self.image_height), (0, 0, 0, 110))
+        )
+        self.overlay_item = self.canvas.create_image(0, 0, image=self.overlay_image_buffer, anchor="nw")
+        self.canvas.itemconfig(self.overlay_item, state='hidden')
 
         # menu buttons
         self.menu_frame = tk.Frame(self, bg="#141414")
@@ -231,7 +231,7 @@ class App(ctk.CTk):
                 try:
                     fn()
                 except Exception as e:
-                    print(f"UI task error: {e}")
+                    logger.error(f"UI task error: {e}")
         except queue.Empty:
             pass
         self.after(50, self._drain_ui_queue)
@@ -255,7 +255,8 @@ class App(ctk.CTk):
             if last_record := self.image_manager.get_last_record():
                 self.set_image(last_record.uuid)
 
-        self.enable_chatgpt = self.config_manager.get_config_value("enable_chatgpt", do_raise=False)
+        enable_chatgpt = self.config_manager.get_config_value("enable_chatgpt", do_raise=False)
+        self.enable_chatgpt = True if enable_chatgpt is None else enable_chatgpt
 
         self.rotation_enabled = bool(self.config_manager.get_config_value("rotation_enabled", do_raise=False))
         self.rotation_mode = self.config_manager.get_config_value("rotation_mode", do_raise=False) or "sequential"
@@ -317,7 +318,7 @@ class App(ctk.CTk):
         try:
             image = Image.open(image_path)
         except Exception as e:
-            print(e)
+            logger.warning(f"Could not open image {image_uuid}: {e}")
             image = Image.new("RGBA", (self.width, self.image_height), (0, 0, 0, 255))
 
         if self.do_resize:
@@ -327,19 +328,10 @@ class App(ctk.CTk):
         self.image_uuid = image_uuid
         self.config_manager.set_config_value("current_image", image_uuid)
 
-    def fade(self, dir):
-        if dir == "in":
-            for i in range(len(self.overlay_buffer)):
-                if i > 0:
-                    self.canvas.itemconfig(self.overlay_buffer[i - 1], state='hidden')
-                self.canvas.itemconfig(self.overlay_buffer[i], state='normal')
-                self.canvas.update()
-        elif dir == "out":
-            for i in range(len(self.overlay_buffer) - 1, -1, -1):
-                if i < len(self.overlay_buffer) - 1:
-                    self.canvas.itemconfig(self.overlay_buffer[i + 1], state='hidden')
-                self.canvas.itemconfig(self.overlay_buffer[i], state='normal')
-                self.canvas.update()
+    def fade(self, direction):
+        state = 'normal' if direction == "in" else 'hidden'
+        self.canvas.itemconfig(self.overlay_item, state=state)
+        self.canvas.update()
 
     def show_menu(self):
         menu_h = 680
@@ -423,7 +415,7 @@ class App(ctk.CTk):
             self.qr_image_buffer = ImageTk.PhotoImage(qr)
             self.upload_qr_label.configure(image=self.qr_image_buffer)
         except Exception as e:
-            print(f"QR generation failed: {e}")
+            logger.warning(f"QR generation failed: {e}")
             self.qr_image_buffer = None
 
         fw, fh = 640, 820
@@ -553,7 +545,7 @@ class App(ctk.CTk):
         self.run_on_ui(self.show_listen_status)
 
         def _status_callback(msg):
-            print(msg)
+            logger.info(msg)
             self.run_on_ui(lambda m=msg: self.update_listen_status(m))
 
         speech = standard_recognize(
@@ -643,16 +635,3 @@ class App(ctk.CTk):
         self.hide_setting_frame()
         self.hide_menu()
         self.hide_overlay()
-
-
-if __name__ == "__main__":
-    import os
-    from generator import OpenAIImageGenerator
-    from managers.image_manager import ImageManager
-
-    image_manager = ImageManager(os.path.join(os.path.dirname(__file__), '..', 'imgs'), OpenAIImageGenerator())
-    config_manager = ConfigManager()
-
-    app = App()
-    app.set_managers(image_manager, config_manager)
-    app.mainloop()

@@ -7,6 +7,9 @@
 # uv virtual environment (recreate with `uv sync`; uv.lock IS committed)
 .venv/
 
+# rotating application logs
+logs/
+
 # Runtime state the frame writes at startup/use. Kept untracked so the in-app
 # Sync (git pull) never conflicts; regenerated on demand. Sample images that
 # were already committed stay tracked.

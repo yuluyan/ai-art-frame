@@ -1,4 +1,10 @@
+import logging
 import sys
+
+from logging_config import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 def _init_x11_threads():
@@ -17,7 +23,7 @@ def _init_x11_threads():
                 return
             except OSError:
                 continue
-        print("Warning: could not call XInitThreads (libX11 not found).")
+        logger.warning("Could not call XInitThreads (libX11 not found).")
 
 
 _init_x11_threads()

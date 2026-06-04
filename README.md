@@ -21,7 +21,7 @@ This project uses [uv](https://docs.astral.sh/uv/) to manage the Python version 
    uv run python src/main.py
    ```
 
-**Managing dependencies:** `uv add <pkg>` / `uv remove <pkg>` to change them, `uv lock --upgrade` to refresh the lockfile. Commit `pyproject.toml`, `uv.lock`, and `.python-version`; the `.venv/` folder is git-ignored and recreated by `uv sync`.
+**Managing dependencies:** `uv add <pkg>` / `uv remove <pkg>` to change them, `uv lock --upgrade` to refresh the lockfile. Commit `pyproject.toml` and `uv.lock`; the `.venv/` folder is git-ignored and recreated by `uv sync`.
 
 # Using the frame
 
@@ -36,11 +36,10 @@ Tap the screen to open the menu:
 
 ## Image generation settings (setting → Image Generation)
 
-- **size** — default portrait `1024x1536` (matches the 1080×1920 frame); also `auto`, `1024x1024`, `1536x1024`.
 - **quality** — `auto` / `high` / `medium` / `low`.
 - **background** — `auto` / `opaque` / `transparent`.
 
-Images are always stored on disk as PNG regardless of these settings.
+The output **size is locked to `1152x2048`** (the frame's exact 9:16 aspect, and a valid multiple-of-16 size for gpt-image-2), so images fill the 1080×1920 frame with no bars or crop. Images are always stored on disk as PNG.
 
 ## Auto-rotation / slideshow (setting → Rotation)
 

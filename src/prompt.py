@@ -48,8 +48,7 @@ def speech_to_prompt(short_idea: str) -> str:
         generated_text = response_data["choices"][0]["message"]["content"]
         return generated_text.strip()
     else:
-        print(response.text)
-        raise Exception(f"Request failed with status code {response.status_code}")
+        raise RuntimeError(f"Prompt generation {response.status_code}: {response.text.strip()}")
 
 
 if __name__ == "__main__":

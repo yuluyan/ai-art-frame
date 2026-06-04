@@ -1,8 +1,11 @@
 import hashlib
+import logging
 import os
 import shutil
 import subprocess
 import sys
+
+logger = logging.getLogger(__name__)
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 MAIN_SCRIPT = os.path.join(REPO_ROOT, "src", "main.py")
@@ -62,7 +65,7 @@ def _resolve_uv():
     return None
 
 
-def perform_sync(status=print) -> dict:
+def perform_sync(status=logger.info) -> dict:
     """Pull the latest code; if uv.lock changed, run `uv sync`.
 
     Returns {ok, updated, deps_changed, message}. Never raises.

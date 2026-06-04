@@ -41,10 +41,13 @@ class GalleryItem(ctk.CTkFrame):
             text_color="#fff7e3", 
             font=("Consolas", 12, "bold")
         )
-        self.image = ctk.CTkImage(
-            fit_image(Image.open(path), int(image_width), int(image_height), background=(20, 20, 20)),
-            size=(image_width, image_height),
-        )
+        try:
+            pil_image = fit_image(Image.open(path), int(image_width), int(image_height), background=(20, 20, 20))
+        except Exception:
+            # Missing/corrupt PNG -> show a blank tile instead of crashing the
+            # whole gallery (and startup) on one bad record.
+            pil_image = Image.new("RGB", (int(image_width), int(image_height)), (20, 20, 20))
+        self.image = ctk.CTkImage(pil_image, size=(image_width, image_height))
 
         self.display_command = display_command
         self.delete_command = delete_command
