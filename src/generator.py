@@ -65,7 +65,8 @@ class OpenAIImageGenerator(ImageGenerator):
         data["output_format"] = "png"
 
         response = requests.post(self.get_url(), headers=headers, json=data, timeout=300)
-        response.raise_for_status()
+        if response.status_code != 200:
+            raise RuntimeError(f"OpenAI image generation {response.status_code}: {response.text.strip()}")
 
         b64_image = response.json()["data"][0]["b64_json"]
         image = Image.open(BytesIO(base64.b64decode(b64_image)))

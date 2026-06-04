@@ -26,7 +26,8 @@ def transcribe_audio(audio_data, model: str = TRANSCRIBE_MODEL) -> typing.Option
     files = {"file": ("audio.wav", wav, "audio/wav")}
     data = {"model": model}
     response = requests.post(OPENAI_TRANSCRIBE_URL, headers=headers, files=files, data=data, timeout=60)
-    response.raise_for_status()
+    if response.status_code != 200:
+        raise RuntimeError(f"OpenAI transcription {response.status_code}: {response.text.strip()}")
     return response.json().get("text")
 
 
