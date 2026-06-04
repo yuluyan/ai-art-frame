@@ -1,3 +1,27 @@
+import sys
+
+
+def _init_x11_threads():
+    """Make Xlib thread-safe before Tk opens a display (Linux/X11 only).
+
+    The frame runs Tk alongside background threads (the voice listener and the
+    web upload server). Without XInitThreads(), Xlib aborts at startup with
+    "[xcb] Extra reply data still left in queue". This must run before the Tk
+    root is created, i.e. before importing/instantiating the GUI.
+    """
+    if sys.platform.startswith("linux"):
+        import ctypes
+        for libname in ("libX11.so.6", "libX11.so"):
+            try:
+                ctypes.CDLL(libname).XInitThreads()
+                return
+            except OSError:
+                continue
+        print("Warning: could not call XInitThreads (libX11 not found).")
+
+
+_init_x11_threads()
+
 import os
 
 from gui import App
