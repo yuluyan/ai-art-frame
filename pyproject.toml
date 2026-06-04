@@ -3,7 +3,9 @@ name = "ai-art-frame"
 version = "0.1.0"
 description = "Generate AI art for wall picture frame display using voice prompt."
 readme = "README.md"
-requires-python = ">=3.13"
+# Broadened from >=3.13 so the OS Python (e.g. 3.11 on Raspberry Pi OS) can be
+# used. The app only needs 3.8+ syntax.
+requires-python = ">=3.11"
 dependencies = [
     "customtkinter>=5.2.2",   # GUI framework (pulls in darkdetect)
     "flask>=3.1.3",           # web upload server (drop-in images from a phone)
@@ -18,3 +20,8 @@ dependencies = [
 # package, so tell uv not to try to build/install the project itself.
 [tool.uv]
 package = false
+# python-build-standalone's bundled Tk crashes on some Linux/X11 setups (e.g.
+# Raspberry Pi) with an "[xcb] ... Aborting" abort at startup. Prefer the OS
+# Python, whose Tk works against the system X11.
+# See https://github.com/astral-sh/uv/issues/11942
+python-preference = "only-system"

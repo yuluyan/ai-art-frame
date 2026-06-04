@@ -9,10 +9,11 @@ driven by tapping the screen.
 This project uses [uv](https://docs.astral.sh/uv/) to manage the Python version and dependencies.
 
 1. **Install uv** (once) — see https://docs.astral.sh/uv/getting-started/installation/
-2. **Create the environment.** uv reads `.python-version` (Python 3.13.5) and `pyproject.toml`, then installs the exact versions pinned in `uv.lock`:
+2. **Create the environment.** uv uses the **OS Python** (`python-preference = "only-system"`) and installs the exact versions pinned in `uv.lock`:
    ```sh
    uv sync
    ```
+   > The system Python is required because python-build-standalone's bundled Tk crashes on some Linux/X11 setups ([uv#11942](https://github.com/astral-sh/uv/issues/11942)). On Linux/Raspberry Pi, install Tk for the system Python first: `sudo apt install -y python3-tk` (plus `portaudio19-dev libjpeg-dev zlib1g-dev` so PyAudio/Pillow can build).
 3. **Add your secret** to the project root (git-ignored):
    - `key.secret` — your OpenAI API key
 4. **Run the app:**
