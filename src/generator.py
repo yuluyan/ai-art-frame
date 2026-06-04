@@ -36,14 +36,18 @@ class OpenAIImageGenerator(ImageGenerator):
     """
 
     MODEL = "gpt-image-2"
+    # Size is LOCKED to the frame's exact 9:16 aspect. gpt-image-2 requires both
+    # edges to be multiples of 16, so the frame's native 1080x1920 isn't a valid
+    # request; 1152x2048 has the identical aspect (0.5625) and downscales to fill
+    # 1080x1920 with no letterbox bars and no crop.
+    SIZE = "1152x2048"
 
     def __init__(self) -> None:
         # Only the knobs that meaningfully affect a wall-frame image are kept;
-        # `output_format`/`n`/`moderation` stay internal. Keys match the
-        # `gpt_image_configs` ConfigItems so the inherited configure() picks
-        # them up from the user's settings.
+        # size is fixed (see SIZE) and output_format/n/moderation stay internal.
+        # Keys match the `gpt_image_configs` ConfigItems so the inherited
+        # configure() picks them up from the user's settings.
         self.configs = {
-            "size": "1024x1536",   # portrait, matches the 1080x1920 frame
             "quality": "auto",
             "background": "auto",
         }
@@ -62,6 +66,7 @@ class OpenAIImageGenerator(ImageGenerator):
         data["model"] = self.MODEL
         data["prompt"] = prompt
         data["n"] = 1
+        data["size"] = self.SIZE
         data["output_format"] = "png"
 
         response = requests.post(self.get_url(), headers=headers, json=data, timeout=300)

@@ -105,14 +105,6 @@ class ConfigManager:
             name="gpt_image_configs",
             label="Image Generation",
             items=[
-                ConfigItem("size", "Size", "str", "1024x1536",
-                    [
-                        "auto",
-                        "1024x1024",
-                        "1536x1024",
-                        "1024x1536",
-                    ]
-                ),
                 ConfigItem("quality", "Quality", "str", "auto",
                     [
                         "auto",
