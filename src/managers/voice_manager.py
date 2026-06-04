@@ -4,9 +4,30 @@ import threading
 import time
 import typing
 
+import requests
 import speech_recognition as sr
 
 from utils import get_openai_key
+
+
+OPENAI_TRANSCRIBE_URL = "https://api.openai.com/v1/audio/transcriptions"
+TRANSCRIBE_MODEL = "whisper-1"
+
+
+def transcribe_audio(audio_data, model: str = TRANSCRIBE_MODEL) -> typing.Optional[str]:
+    """Transcribe AudioData via OpenAI's audio transcription API (direct HTTP).
+
+    Avoids SpeechRecognition's recognizer methods, whose names have churned
+    across releases (e.g. recognize_whisper_api -> recognize_openai, which also
+    needs the extra `openai` package), and needs nothing beyond requests.
+    """
+    wav = audio_data.get_wav_data()
+    headers = {"Authorization": f"Bearer {get_openai_key()}"}
+    files = {"file": ("audio.wav", wav, "audio/wav")}
+    data = {"model": model}
+    response = requests.post(OPENAI_TRANSCRIBE_URL, headers=headers, files=files, data=data, timeout=60)
+    response.raise_for_status()
+    return response.json().get("text")
 
 
 def standard_recognize(
@@ -39,13 +60,9 @@ def standard_recognize(
         end_callback()
 
     try:
-        api_key = get_openai_key()
-        speech = recognizer.recognize_whisper_api(audio, api_key=api_key)
-    except sr.RequestError as e:
-        print(f"Could not request results from Whisper API: {e}")
-        speech = None
+        speech = transcribe_audio(audio)
     except Exception as e:
-        print(f"Speech recognition failed: {e}")
+        print(f"Transcription failed: {e}")
         speech = None
 
     if speech and to_lower:
@@ -141,8 +158,8 @@ class VoiceManager:
                             self.recognizer.adjust_for_ambient_noise(source)
                             audio = self.recognizer.listen(source, timeout=self.microphone_loop_duration)
 
-                    speech = self.recognizer.recognize_whisper_api(audio, api_key=get_openai_key())
-                    speech = speech.lower()
+                    speech = transcribe_audio(audio)
+                    speech = (speech or "").lower()
 
                     matched_id = []
                     for trigger_phrase, phrase_id in self.phrase_mapping.items():
