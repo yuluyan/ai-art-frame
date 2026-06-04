@@ -140,9 +140,9 @@ class App(ctk.CTk):
         self.voice_control = VoiceManager()
         self.voice_control.disable_background_listening = True
         self.voice_control.register_trigger_phrases(
-            ["generate"], self.voice_callback_newimage, 
-            wait_start_callback=self.show_listen_progressbar, 
-            wait_end_callback=self.hide_listen_progressbar, 
+            ["generate"], self.voice_callback_newimage,
+            wait_start_callback=lambda: self.run_on_ui(self.show_listen_progressbar),
+            wait_end_callback=lambda: self.run_on_ui(self.hide_listen_progressbar),
             modal=True
         )
         self.voice_control.start()
@@ -546,23 +546,25 @@ class App(ctk.CTk):
         self.voice_control.trigger("generate")
 
     def voice_callback_newimage(self, speech, mic, rec):
-        self.show_listen_status()
+        # Runs on the voice manager's background thread. Tk is NOT thread-safe
+        # (touching it off the main thread crashes X11 on Linux), so every UI
+        # call is marshaled onto the main thread via run_on_ui. The blocking
+        # work (listen, prompt, generate) stays here, off the main loop.
+        self.run_on_ui(self.show_listen_status)
 
         def _status_callback(msg):
-            self.update_listen_status(msg)
             print(msg)
+            self.run_on_ui(lambda m=msg: self.update_listen_status(m))
 
         speech = standard_recognize(
-            mic, rec, timeout=45, 
-            start_callback=self.show_listen_progressbar,
-            # start_callback=lambda: self.update_listen_status("Start speaking"),
-            end_callback=self.hide_listen_progressbar,
-            # end_callback=lambda: self.update_listen_status("Speech detected, recognizing...")
+            mic, rec, timeout=45,
+            start_callback=lambda: self.run_on_ui(self.show_listen_progressbar),
+            end_callback=lambda: self.run_on_ui(self.hide_listen_progressbar),
         )
 
         if not speech:
             _status_callback("No speech detected. Tap NEW and speak after the tone.")
-            self.after(3000, self._dismiss_status_overlay)
+            self.run_on_ui(lambda: self.after(3000, self._dismiss_status_overlay))
             return
 
         _status_callback(f"Detected speech: {speech}")
@@ -578,7 +580,7 @@ class App(ctk.CTk):
         if "verbose" in speech or not self.enable_chatgpt:
             speech = speech.replace("verbose", "").strip(",.?!;:")
             _status_callback(f"Verbose mode: {speech}")
-
+            prompt = speech
         else:
             try:
                 prompt = speech_to_prompt(speech)
@@ -586,25 +588,26 @@ class App(ctk.CTk):
             except Exception as e:
                 _status_callback(f"Could not generate prompt: {e}")
                 prompt = speech
-        
+
         # gpt-image-2 has no progress endpoint, so show an indeterminate spinner
         # while the single blocking generate() call runs.
-        self.show_listen_progressbar()
+        self.run_on_ui(self.show_listen_progressbar)
         try:
             record = self.image_manager.generate(title, prompt)
         except Exception as e:
             _status_callback(f"Generation failed: {e}")
-            self.hide_listen_progressbar()
-            self.after(3500, self._dismiss_status_overlay)
+            self.run_on_ui(self.hide_listen_progressbar)
+            self.run_on_ui(lambda: self.after(3500, self._dismiss_status_overlay))
             return
 
-        self.hide_listen_progressbar()
-        self.hide_listen_status()
+        def _finish():
+            self.hide_listen_progressbar()
+            self.hide_listen_status()
+            self.set_image(record.uuid)
+            self.history_frame.add_item(record)
+            self.hide_overlay()
 
-        self.set_image(record.uuid)
-        self.history_frame.add_item(record)
-
-        self.hide_overlay()
+        self.run_on_ui(_finish)
 
     def show_history_frame(self):
         yoffset = 50
