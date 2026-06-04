@@ -4,6 +4,7 @@ import tkinter as tk
 import customtkinter as ctk
 
 from gui_components.general import BlockButton
+from utils import fit_image
 
 
 class GalleryItem(ctk.CTkFrame):
@@ -40,7 +41,10 @@ class GalleryItem(ctk.CTkFrame):
             text_color="#fff7e3", 
             font=("Consolas", 12, "bold")
         )
-        self.image = ctk.CTkImage(Image.open(path), size=(image_width, image_height))
+        self.image = ctk.CTkImage(
+            fit_image(Image.open(path), int(image_width), int(image_height), background=(20, 20, 20)),
+            size=(image_width, image_height),
+        )
 
         self.display_command = display_command
         self.delete_command = delete_command

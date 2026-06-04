@@ -19,6 +19,25 @@ def get_sd_port():
 def resize_image(image, width, height):
     return image.resize((width, height), Image.LANCZOS)
 
+def fit_image(image, width, height, background=(0, 0, 0)):
+    """Scale `image` to fit within (width, height) preserving its aspect ratio,
+    centered on a solid `background` (letterbox). Returns an RGB image exactly
+    (width, height) in size, so the source is never stretched/distorted."""
+    src_w, src_h = image.size
+    scale = min(width / src_w, height / src_h)
+    new_w = max(1, round(src_w * scale))
+    new_h = max(1, round(src_h * scale))
+    fitted = image.resize((new_w, new_h), Image.LANCZOS)
+
+    canvas = Image.new("RGB", (width, height), background)
+    offset = ((width - new_w) // 2, (height - new_h) // 2)
+    if fitted.mode in ("RGBA", "LA", "P"):
+        fitted = fitted.convert("RGBA")
+        canvas.paste(fitted, offset, fitted)
+    else:
+        canvas.paste(fitted, offset)
+    return canvas
+
 def date_serializer(obj):
     if isinstance(obj, date):
         return obj.isoformat()

@@ -1,4 +1,3 @@
-import datetime
 import os
 import queue
 import random
@@ -15,7 +14,7 @@ from managers.config_manager import ConfigManager
 from managers.voice_manager import VoiceManager, standard_recognize
 from managers import sync_manager
 from prompt import speech_to_prompt
-from utils import resize_image
+from utils import fit_image
 
 from gui_components.general import BlockButton
 from gui_components.history import GalleryItem
@@ -152,10 +151,7 @@ class App(ctk.CTk):
         self.width, self.height = 1080, 1920
         # self.width, self.height = 1920, 1080
         
-        self.header_height = int(self.height * (1 - 0.65) * 0.4)
-        self.footer_height = int(self.height * (1 - 0.65) * 0.6)
-
-        self.image_height = self.height - self.header_height - self.footer_height
+        self.image_height = self.height
 
         self.attributes("-fullscreen", True)
         self.config(cursor="none")
@@ -170,28 +166,10 @@ class App(ctk.CTk):
         self.canvas = tk.Canvas(self, width=self.width, height=self.height, highlightthickness=0)
         self.canvas.bind("<Button-1>", self.show_overlay)
         # self.canvas.pack(fill="both", expand=True)
-        self.canvas.place(relx=0.5, y=self.header_height, anchor="n", width=self.width, height=self.height - self.header_height - self.footer_height)
-
-        # header
-        self.header = tk.Frame(self, width=self.width, height=self.header_height, bg="#fffef5")
-        self.header.place(relx=0.5, y=0, anchor="n", width=self.width, height=self.header_height)
-        self.header_title = tk.Label(self.header, text="", font=("Cormorant Garamond Light", 60), bg="#fffef5", padx=30)
-        self.header_subtitle = tk.Label(self.header, text="", font=("Cormorant Garamond", 25), bg="#fffef5", padx=30)
-        if self.header_height > 0:
-            self.header_title.place(relx=1, rely=0.4, anchor="e")
-            self.header_subtitle.place(relx=1, rely=0.75, anchor="e")
-
-        # footer
-        self.footer = tk.Frame(self, width=self.width, height=self.footer_height, bg="#fffef5")
-        self.footer.place(relx=0.5, y=self.height, anchor="s", width=self.width, height=self.footer_height)
-        self.footer_title = tk.Label(self.footer, text="", font=("Cormorant Garamond", 30), bg="#fffef5", padx=40)
-        self.footer_subtitle = tk.Label(self.footer,  text="", font=("Cormorant Garamond Light", 18), bg="#fffef5", padx=40, wraplength=self.width - 60, justify="left")
-        if self.footer_height > 0:
-            self.footer_title.place(relx=0, y=30, anchor="nw")
-            self.footer_subtitle.place(relx=0, y=100, anchor="nw")
+        self.canvas.place(relx=0.5, y=0, anchor="n", width=self.width, height=self.height)
 
         # picture
-        self.picture_image_buffer = ImageTk.PhotoImage(Image.new("RGB", (self.width, self.image_height), (255, 254, 245)))
+        self.picture_image_buffer = ImageTk.PhotoImage(Image.new("RGB", (self.width, self.image_height), (0, 0, 0)))
         self.picture_buffer = self.canvas.create_image(self.width // 2, self.image_height // 2, image=self.picture_image_buffer, anchor=tk.CENTER)
 
         # overlay
@@ -343,18 +321,11 @@ class App(ctk.CTk):
             image = Image.new("RGBA", (self.width, self.image_height), (0, 0, 0, 255))
 
         if self.do_resize:
-            image = resize_image(image, self.width, self.image_height)
+            image = fit_image(image, self.width, self.image_height)
         self.picture_image_buffer = ImageTk.PhotoImage(image)
         self.canvas.itemconfig(self.picture_buffer, image=self.picture_image_buffer)
         self.image_uuid = image_uuid
         self.config_manager.set_config_value("current_image", image_uuid)
-
-        record = self.image_manager.get_record(image_uuid)
-        if record:
-            self.header_title.configure(text=(record.title or "").title())
-            self.header_subtitle.configure(text=(record.model or "").replace("_", " ").replace("-", " "))
-            self.footer_title.configure(text=(record.date or datetime.date.today()).strftime("%B %d, %Y"))
-            self.footer_subtitle.configure(text=record.prompt)
 
     def fade(self, dir):
         if dir == "in":
@@ -584,11 +555,12 @@ class App(ctk.CTk):
             # end_callback=lambda: self.update_listen_status("Speech detected, recognizing...")
         )
 
-        if speech:
-            _status_callback(f"Detected speech: {speech}")
-        else:
-            _status_callback("Could not request results from Whisper API")
+        if not speech:
+            _status_callback("No speech detected. Tap NEW and speak after the tone.")
+            self.after(3000, self._dismiss_status_overlay)
+            return
 
+        _status_callback(f"Detected speech: {speech}")
         speech = speech.strip(",.?!;:")
 
         if "title" in speech:

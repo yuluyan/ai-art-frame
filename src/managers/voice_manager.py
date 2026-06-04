@@ -18,11 +18,22 @@ def standard_recognize(
     *,
     to_lower: bool = True,
 ) -> typing.Optional[str]:
-    with microphone as source:
-        recognizer.adjust_for_ambient_noise(source)
-        if start_callback:
-            start_callback()
-        audio = recognizer.listen(source, timeout=timeout)
+    try:
+        with microphone as source:
+            recognizer.adjust_for_ambient_noise(source)
+            if start_callback:
+                start_callback()
+            audio = recognizer.listen(source, timeout=timeout)
+    except sr.WaitTimeoutError:
+        print("Listening timed out: no speech detected.")
+        if end_callback:
+            end_callback()
+        return None
+    except OSError as e:
+        print(f"Microphone error: {e}")
+        if end_callback:
+            end_callback()
+        return None
 
     if end_callback:
         end_callback()
@@ -32,6 +43,9 @@ def standard_recognize(
         speech = recognizer.recognize_whisper_api(audio, api_key=api_key)
     except sr.RequestError as e:
         print(f"Could not request results from Whisper API: {e}")
+        speech = None
+    except Exception as e:
+        print(f"Speech recognition failed: {e}")
         speech = None
 
     if speech and to_lower:
