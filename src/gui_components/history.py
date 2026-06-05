@@ -4,6 +4,7 @@ import tkinter as tk
 import customtkinter as ctk
 
 from gui_components.general import BlockButton
+from gui_components import theme
 from utils import fit_image
 
 
@@ -38,8 +39,8 @@ class GalleryItem(ctk.CTkFrame):
             pady=2, width=image_width, 
             height=40, 
             fg_color="#141414", 
-            text_color="#fff7e3", 
-            font=("Consolas", 12, "bold")
+            text_color="#fff7e3",
+            font=theme.font(theme.FONT_SIZE_CAPTION)
         )
         try:
             pil_image = fit_image(Image.open(path), int(image_width), int(image_height), background=(20, 20, 20))
@@ -51,8 +52,8 @@ class GalleryItem(ctk.CTkFrame):
 
         self.display_command = display_command
         self.delete_command = delete_command
-        self.display_button = BlockButton(self, "display", "#8df0ad", 12, command=self.display)
-        self.delete_button = BlockButton(self, "del", "#ff5447", 12, command=self.delete)
+        self.display_button = BlockButton(self, "display", "#8df0ad", theme.FONT_SIZE_CAPTION, command=self.display)
+        self.delete_button = BlockButton(self, "del", "#ff5447", theme.FONT_SIZE_CAPTION, command=self.delete)
         
         self.label.grid(row=0, column=0, columnspan=2, sticky="nsew")
 

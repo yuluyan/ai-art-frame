@@ -1,15 +1,17 @@
 import tkinter as tk
 
+from gui_components import theme
+
 
 class BlockButton(tk.Button):
-    def __init__(self, master, text, bc, fs, command, **kwargs):
+    def __init__(self, master, text, bc, fs=theme.FONT_SIZE_BODY, command=None, **kwargs):
         self.bc = bc
         self.fc = "#141414"
 
         super().__init__(
-            master, 
-            text=" ".join([c for c in text.upper()]), 
-            font=tk.font.Font(size=fs, family="Consolas", weight="bold"), 
+            master,
+            text=" ".join([c for c in text.upper()]),
+            font=theme.font(fs),
             fg=self.bc, 
             bg=self.fc, 
             border=0, 
@@ -48,7 +50,7 @@ class StyleTile(tk.Button):
         super().__init__(
             master,
             text=text.upper(),
-            font=tk.font.Font(size=18, family="Consolas", weight="bold"),
+            font=theme.font(theme.FONT_SIZE_BODY),
             fg=self.bc,
             bg=self.fc,
             border=0,

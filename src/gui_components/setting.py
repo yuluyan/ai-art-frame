@@ -3,6 +3,8 @@ import typing
 import tkinter as tk
 import customtkinter as ctk
 
+from gui_components import theme
+
 
 class BaseSettingInput(ctk.CTkFrame):
     def __init__(self, master, width: int, height: int, **kwargs):
@@ -36,7 +38,7 @@ class IntInput(BaseSettingInput):
             textvariable=self.variable, 
             width=50, 
             height=35, 
-            font=("Consolas", 15, "bold"), 
+            font=theme.font(theme.FONT_SIZE_BODY), 
             text_color="#fff7e3", 
             bg_color="#141414", 
             corner_radius=0, 
@@ -80,7 +82,7 @@ class FloatInput(BaseSettingInput):
             textvariable=self.label_variable, 
             width=50, 
             height=35, 
-            font=("Consolas", 15, "bold"), 
+            font=theme.font(theme.FONT_SIZE_BODY), 
             text_color="#fff7e3", 
             bg_color="#141414", 
             corner_radius=0, 
@@ -127,7 +129,7 @@ class BoolInput(BaseSettingInput):
             checkbox_width=30,
             checkbox_height=30,
             corner_radius=0,
-            font=("Consolas", 15, "bold"),
+            font=theme.font(theme.FONT_SIZE_BODY),
             fg_color="#444444",
             hover_color="#ffba30",
             text_color="#fff7e3",
@@ -150,8 +152,8 @@ class StringInput(BaseSettingInput):
             values=choices,
             width=250, 
             height=35, 
-            font=("Consolas", 15, "bold"), 
-            dropdown_font=("Consolas", 15, "bold"),
+            font=theme.font(theme.FONT_SIZE_BODY), 
+            dropdown_font=theme.font(theme.FONT_SIZE_BODY),
             text_color="#fff7e3", 
             fg_color="#343434", 
             button_color="#ffcc66",
@@ -177,7 +179,7 @@ class ReadonlyInput(BaseSettingInput):
             state="disabled", 
             width=350,
             height=35,
-            font=("Consolas", 15, "bold"), 
+            font=theme.font(theme.FONT_SIZE_BODY), 
             text_color="#fff7e3", 
             fg_color="#343434",
             bg_color="#141414", 
@@ -194,9 +196,9 @@ class SettingItem(ctk.CTkFrame):
 
         self.label = ctk.CTkLabel(
             self, 
-            text=config_item.label, 
-            width=300, 
-            font=("Consolas", 20, "bold"), 
+            text=config_item.label,
+            width=300,
+            font=theme.font(theme.FONT_SIZE_HEADING),
             text_color="#fff7e3", 
             bg_color="#141414",
         )
@@ -239,9 +241,9 @@ class SettingGroupLabel(ctk.CTkFrame):
 
         self.label = ctk.CTkLabel(
             self, 
-            text=text, 
-            width=width, 
-            font=("Consolas", 25, "bold"), 
+            text=text,
+            width=width,
+            font=theme.font(theme.FONT_SIZE_TITLE),
             text_color="#fff7e3", 
             bg_color="#141414"
         )

@@ -16,6 +16,7 @@ from managers import sync_manager
 from prompt import speech_to_prompt, STYLE_ORDER, STYLE_PRESETS, STYLE_PLAIN
 from utils import fit_image
 
+from gui_components import theme
 from gui_components.general import BlockButton, StyleTile
 from gui_components.history import GalleryItem
 from gui_components.setting import SettingGroupLabel, SettingItem
@@ -201,41 +202,41 @@ class App(ctk.CTk):
 
         # menu buttons
         self.menu_frame = tk.Frame(self, bg="#141414")
-        self.reset_button = BlockButton(self, "new", "#8df0ad", 15, command=self.button_command_newimage)
-        self.upload_button = BlockButton(self, "upload", "#c792ea", 15, command=self.button_command_upload)
-        self.history_button = BlockButton(self, "history", "#76b5c5", 15, command=self.show_history_frame)
-        self.setting_button = BlockButton(self, "setting", "#ffcc66", 15, command=self.show_setting_frame)
-        self.sync_button = BlockButton(self, "sync", "#82aaff", 15, command=self.button_command_sync)
-        self.close_overlay_button = BlockButton(self, "close", "#b3b3b3", 15, command=self.hide_overlay)
-        self.exit_button = BlockButton(self, "exit", "#ff5447", 15, command=self.exit)
+        self.reset_button = BlockButton(self, "new", "#8df0ad", theme.FONT_SIZE_BODY, command=self.button_command_newimage)
+        self.upload_button = BlockButton(self, "upload", "#c792ea", theme.FONT_SIZE_BODY, command=self.button_command_upload)
+        self.history_button = BlockButton(self, "history", "#76b5c5", theme.FONT_SIZE_BODY, command=self.show_history_frame)
+        self.setting_button = BlockButton(self, "setting", "#ffcc66", theme.FONT_SIZE_BODY, command=self.show_setting_frame)
+        self.sync_button = BlockButton(self, "sync", "#82aaff", theme.FONT_SIZE_BODY, command=self.button_command_sync)
+        self.close_overlay_button = BlockButton(self, "close", "#b3b3b3", theme.FONT_SIZE_BODY, command=self.hide_overlay)
+        self.exit_button = BlockButton(self, "exit", "#ff5447", theme.FONT_SIZE_BODY, command=self.exit)
         
         # listen status
         self.listen_frame = tk.Frame(self, bg="#141414")
         self.listen_text =  tk.StringVar()
-        self.listen_status = tk.Label(self, textvariable=self.listen_text, bg="#141414", fg="#fff7e3", font=("Consolas", 12, "bold"), wraplength=500, justify="center")
+        self.listen_status = tk.Label(self, textvariable=self.listen_text, bg="#141414", fg="#fff7e3", font=theme.font(theme.FONT_SIZE_CAPTION), wraplength=500, justify="center")
         self.listen_progressbar = ctk.CTkProgressBar(self, mode="indeterminate", indeterminate_speed=1.5, width=400, height=20, progress_color="#fff7e3", corner_radius=0)
 
         # history frame
         self.history_frame_width = int(self.width * 0.8)
         self.history_frame_height = int(self.height * 0.65)
         self.history_frame = None
-        self.history_close_button = BlockButton(self, "close", "#b3b3b3", 15, command=self.hide_history_frame)
+        self.history_close_button = BlockButton(self, "close", "#b3b3b3", theme.FONT_SIZE_BODY, command=self.hide_history_frame)
 
         # setting frame
         self.setting_frame_width = min(760, self.width * 0.75)
         self.setting_frame_height = min(650, self.height * 0.75)
         self.setting_frame = None
         self.setting_changed = tk.BooleanVar(value=False)
-        self.setting_save_button = BlockButton(self, "save", "#8df0ad", 15, command=self.save_setting)
-        self.setting_close_button = BlockButton(self, "cancel", "#ff5447", 15, command=self.hide_setting_frame)
+        self.setting_save_button = BlockButton(self, "save", "#8df0ad", theme.FONT_SIZE_BODY, command=self.save_setting)
+        self.setting_close_button = BlockButton(self, "cancel", "#ff5447", theme.FONT_SIZE_BODY, command=self.hide_setting_frame)
 
         # upload info overlay (URL + QR code)
         self.upload_frame = tk.Frame(self, bg="#141414")
         self.upload_qr_label = tk.Label(self, bg="#fffef5", bd=0, highlightthickness=0)
-        self.upload_title_label = tk.Label(self, text="UPLOAD IMAGES", bg="#141414", fg="#fff7e3", font=("Consolas", 22, "bold"))
-        self.upload_url_label = tk.Label(self, bg="#141414", fg="#8df0ad", font=("Consolas", 20, "bold"))
-        self.upload_hint_label = tk.Label(self, bg="#141414", fg="#b9b29c", font=("Consolas", 14), wraplength=560, justify="center")
-        self.upload_close_button = BlockButton(self, "close", "#b3b3b3", 15, command=self.hide_upload_info)
+        self.upload_title_label = tk.Label(self, text="UPLOAD IMAGES", bg="#141414", fg="#fff7e3", font=theme.font(theme.FONT_SIZE_TITLE))
+        self.upload_url_label = tk.Label(self, bg="#141414", fg="#8df0ad", font=theme.font(theme.FONT_SIZE_HEADING))
+        self.upload_hint_label = tk.Label(self, bg="#141414", fg="#b9b29c", font=theme.font(theme.FONT_SIZE_CAPTION, "normal"), wraplength=560, justify="center")
+        self.upload_close_button = BlockButton(self, "close", "#b3b3b3", theme.FONT_SIZE_BODY, command=self.hide_upload_info)
 
         # style picker (NEW -> choose a style): a borderless 3x3 grid of tiles
         # (Plain in the center) that fills its container edge-to-edge, with a
@@ -248,7 +249,7 @@ class App(ctk.CTk):
                 command=lambda s=sid: self._on_style_selected(s),
             )
             self.style_tiles.append(tile)
-        self.style_cancel_button = BlockButton(self, "cancel", "#ff5447", 15, command=self.hide_style_picker)
+        self.style_cancel_button = BlockButton(self, "cancel", "#ff5447", theme.FONT_SIZE_BODY, command=self.hide_style_picker)
 
         # Drain cross-thread UI work on the main loop.
         self.after(50, self._drain_ui_queue)
@@ -307,7 +308,7 @@ class App(ctk.CTk):
             display_command=self.gallary_display_command,
             delete_command=self.gallary_delete_command,
             label_text=" ", 
-            label_font=("Consolas", 15, "bold"), 
+            label_font=theme.font(theme.FONT_SIZE_BODY),
             label_fg_color="#141414",
             border_width=0,
             corner_radius=0,
@@ -404,8 +405,11 @@ class App(ctk.CTk):
         self.listen_text.set("Please wait...")
         self.update()
     
-    def show_listen_progressbar(self):
-        self.listen_progressbar.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+    def show_listen_progressbar(self, y=0):
+        # y=0 -> centered (listening). During generation the status box shows the
+        # title/prompt text, so the caller passes y=165 to drop the bar near the
+        # bottom of the 400px box instead of covering that text.
+        self.listen_progressbar.place(relx=0.5, rely=0.5, y=y, anchor=tk.CENTER)
         self.update()
         self.listen_progressbar.start()
     
@@ -646,8 +650,9 @@ class App(ctk.CTk):
                 prompt = speech
 
         # gpt-image-2 has no progress endpoint, so show an indeterminate spinner
-        # while the single blocking generate() call runs.
-        self.run_on_ui(self.show_listen_progressbar)
+        # while the single blocking generate() call runs. Drop it to the bottom of
+        # the box (y=165) so it sits below the title/prompt text already shown.
+        self.run_on_ui(lambda: self.show_listen_progressbar(y=165))
         try:
             record = self.image_manager.generate(title, prompt)
         except Exception as e:
