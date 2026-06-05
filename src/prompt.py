@@ -13,6 +13,7 @@ SYSTEM_PROMPT = (
     "descriptive English."
 )
 
+# Neutral rewrite — honors any medium/style the user happens to speak ("Plain").
 USER_TEMPLATE = """Turn the idea below into ONE image prompt for gpt-image-2.
 
 Guidelines:
@@ -23,8 +24,81 @@ Guidelines:
 
 Idea: '{idea}'"""
 
+# Styled rewrite — the per-style {directive} replaces the open-ended medium/style
+# line so the rewritten prompt always renders the idea in the chosen style.
+USER_TEMPLATE_STYLED = """Turn the idea below into ONE image prompt for gpt-image-2.
 
-def speech_to_prompt(short_idea: str) -> str:
+Guidelines:
+- Write 1-3 sentences of natural language (NOT a comma-separated tag list).
+- Describe the subject, setting, composition, lighting, color palette, and mood.
+- {directive}
+- Be concrete and evocative; avoid brand names, real public figures, embedded text, and watermarks.
+- Output ONLY the prompt, with no preamble, quotes, or extra commentary.
+
+Idea: '{idea}'"""
+
+STYLE_PLAIN = "plain"
+
+# Style presets for the NEW style picker. Each entry's `directive` is injected
+# into USER_TEMPLATE_STYLED to steer the gpt-4o-mini rewrite toward that medium.
+# "plain" has no directive and uses the neutral template above. The styling lives
+# entirely in the rewrite, so a `verbose` / chatgpt-off prompt (which skips the
+# rewrite) is unstyled by design.
+STYLE_PRESETS = {
+    "plain": {
+        "label": "Plain",
+        "directive": None,
+    },
+    "realistic": {
+        "label": "Realistic Photo",
+        "directive": "Render the scene as a photorealistic photograph — natural lighting, lifelike textures, true-to-life color, and realistic depth of field, as if captured on a high-quality camera.",
+    },
+    "oil": {
+        "label": "Oil Painting",
+        "directive": "Render the scene as a traditional oil painting — visible brushwork, rich impasto texture, layered pigments, and a classical painted-canvas feel.",
+    },
+    "watercolor": {
+        "label": "Watercolor",
+        "directive": "Render the scene as a delicate watercolor painting — soft translucent washes, bleeding pigments, gentle gradients, and visible paper texture.",
+    },
+    "anime": {
+        "label": "Anime",
+        "directive": "Render the scene in a modern anime / cel-shaded illustration style — clean linework, expressive characters, vibrant flat colors, and dynamic composition.",
+    },
+    "popart": {
+        "label": "Pop Art",
+        "directive": "Render the scene as bold pop art — flat saturated colors, heavy black outlines, halftone dot shading, and a graphic comic-book sensibility.",
+    },
+    "impressionist": {
+        "label": "Impressionist",
+        "directive": "Render the scene as an impressionist painting — loose visible brushstrokes, emphasis on shifting light and atmosphere, soft edges, and vibrant broken color.",
+    },
+    "pixel": {
+        "label": "Pixel Art",
+        "directive": "Render the scene as detailed retro pixel art — a limited color palette, crisp aligned pixels, and a 16-bit video-game aesthetic with clear, readable shapes.",
+    },
+    "minimalist": {
+        "label": "Minimalist",
+        "directive": "Render the scene in a minimalist style — simple clean composition, a limited palette, generous negative space, and bold flat shapes.",
+    },
+}
+
+# Row-major display order for the 3x3 picker grid (Plain in the center cell).
+STYLE_ORDER = [
+    "realistic", "oil", "watercolor",
+    "anime", "plain", "impressionist",
+    "pixel", "popart", "minimalist",
+]
+
+
+def speech_to_prompt(short_idea: str, style: str = STYLE_PLAIN) -> str:
+    preset = STYLE_PRESETS.get(style) or STYLE_PRESETS[STYLE_PLAIN]
+    directive = preset.get("directive")
+    if directive:
+        user_content = USER_TEMPLATE_STYLED.format(idea=short_idea, directive=directive)
+    else:
+        user_content = USER_TEMPLATE.format(idea=short_idea)
+
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
         "Content-Type": "application/json",
@@ -32,7 +106,7 @@ def speech_to_prompt(short_idea: str) -> str:
     }
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": USER_TEMPLATE.format(idea=short_idea)},
+        {"role": "user", "content": user_content},
     ]
     data = {
         "messages": messages,

@@ -13,16 +13,29 @@ from managers.image_manager import ImageManager
 from managers.config_manager import ConfigManager
 from managers.voice_manager import VoiceManager, standard_recognize
 from managers import sync_manager
-from prompt import speech_to_prompt
+from prompt import speech_to_prompt, STYLE_ORDER, STYLE_PRESETS, STYLE_PLAIN
 from utils import fit_image
 
-from gui_components.general import BlockButton
+from gui_components.general import BlockButton, StyleTile
 from gui_components.history import GalleryItem
 from gui_components.setting import SettingGroupLabel, SettingItem
 
 logger = logging.getLogger(__name__)
 
 ctk.set_appearance_mode("dark")
+
+# Accent color per style tile on the NEW picker (UI-only; keyed by style id).
+STYLE_TILE_COLORS = {
+    "plain": "#b3b3b3",
+    "realistic": "#8df0ad",
+    "oil": "#ffcc66",
+    "watercolor": "#76b5c5",
+    "anime": "#ff8ab3",
+    "popart": "#c792ea",
+    "impressionist": "#82aaff",
+    "pixel": "#f0a868",
+    "minimalist": "#dcdcdc",
+}
 
 
 class ScrollableGalleryFrame(ctk.CTkScrollableFrame):
@@ -141,6 +154,9 @@ class App(ctk.CTk):
 
         self.qr_image_buffer = None
 
+        # Style chosen on the NEW picker for the next generation (see prompt.py).
+        self._pending_style = STYLE_PLAIN
+
         self.voice_control = VoiceManager()
         self.voice_control.register_trigger_phrases(
             ["generate"], self.voice_callback_newimage,
@@ -220,6 +236,19 @@ class App(ctk.CTk):
         self.upload_url_label = tk.Label(self, bg="#141414", fg="#8df0ad", font=("Consolas", 20, "bold"))
         self.upload_hint_label = tk.Label(self, bg="#141414", fg="#b9b29c", font=("Consolas", 14), wraplength=560, justify="center")
         self.upload_close_button = BlockButton(self, "close", "#b3b3b3", 15, command=self.hide_upload_info)
+
+        # style picker (NEW -> choose a style): a borderless 3x3 grid of tiles
+        # (Plain in the center) that fills its container edge-to-edge, with a
+        # full-width cancel bar flush beneath it.
+        self.style_tiles = []
+        for sid in STYLE_ORDER:
+            color = STYLE_TILE_COLORS.get(sid, "#b3b3b3")
+            tile = StyleTile(
+                self, STYLE_PRESETS[sid]["label"], color,
+                command=lambda s=sid: self._on_style_selected(s),
+            )
+            self.style_tiles.append(tile)
+        self.style_cancel_button = BlockButton(self, "cancel", "#ff5447", 15, command=self.hide_style_picker)
 
         # Drain cross-thread UI work on the main loop.
         self.after(50, self._drain_ui_queue)
@@ -535,6 +564,39 @@ class App(ctk.CTk):
             self.update_listen_status("Microphone not available.")
             self.after(2500, self._dismiss_status_overlay)
             return
+        self.show_style_picker()
+
+    # ---- style picker (NEW -> choose a style) ----
+    def show_style_picker(self):
+        # Borderless, gapless: 3x3 tiles fill the grid block, cancel spans its
+        # full width directly beneath. Anchored on relx=0.5 (like the menu) so it
+        # stays centered even when the fullscreen window is wider than self.width.
+        tile = 240
+        cancel_h = 96
+        grid = 3 * tile
+        half = grid // 2
+        top = (self.height - (grid + cancel_h)) // 2
+
+        for idx, t in enumerate(self.style_tiles):
+            row, col = divmod(idx, 3)
+            t.place(relx=0.5, x=-half + col * tile, y=top + row * tile, anchor=tk.NW, width=tile, height=tile)
+        self.style_cancel_button.place(relx=0.5, x=-half, y=top + grid, anchor=tk.NW, width=grid, height=cancel_h)
+        self.update()
+
+    def _hide_style_widgets(self):
+        for t in self.style_tiles:
+            t.place_forget()
+        self.style_cancel_button.place_forget()
+
+    def hide_style_picker(self):
+        # Cancel: dismiss the picker and return to the menu.
+        self._hide_style_widgets()
+        self.show_menu()
+
+    def _on_style_selected(self, style_id):
+        # Set before triggering so the worker thread reads the right style.
+        self._pending_style = style_id
+        self._hide_style_widgets()
         self.voice_control.trigger("generate")
 
     def voice_callback_newimage(self, speech, mic, rec):
@@ -574,9 +636,11 @@ class App(ctk.CTk):
             _status_callback(f"Verbose mode: {speech}")
             prompt = speech
         else:
+            style = self._pending_style
+            style_label = STYLE_PRESETS.get(style, {}).get("label", "Plain")
             try:
-                prompt = speech_to_prompt(speech)
-                _status_callback(f"Title: {title}\nGenerated prompt: {prompt}")
+                prompt = speech_to_prompt(speech, style=style)
+                _status_callback(f"Style: {style_label}\nTitle: {title}\nGenerated prompt: {prompt}")
             except Exception as e:
                 _status_callback(f"Could not generate prompt: {e}")
                 prompt = speech
