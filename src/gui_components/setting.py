@@ -36,8 +36,8 @@ class IntInput(BaseSettingInput):
         self.value_label = ctk.CTkLabel(
             self, 
             textvariable=self.variable, 
-            width=50, 
-            height=35, 
+            width=theme.px(50),
+            height=theme.px(35),
             font=theme.font(theme.FONT_SIZE_BODY), 
             text_color="#fff7e3", 
             bg_color="#141414", 
@@ -48,8 +48,8 @@ class IntInput(BaseSettingInput):
         self.slider = ctk.CTkSlider(
             self, 
             variable=self.variable,
-            width=200, 
-            height=20, 
+            width=theme.px(200),
+            height=theme.px(20),
             fg_color="#444444", 
             progress_color="#ffeabf", 
             button_color="#ffcc66",
@@ -80,8 +80,8 @@ class FloatInput(BaseSettingInput):
         self.value_label = ctk.CTkLabel(
             self, 
             textvariable=self.label_variable, 
-            width=50, 
-            height=35, 
+            width=theme.px(50),
+            height=theme.px(35),
             font=theme.font(theme.FONT_SIZE_BODY), 
             text_color="#fff7e3", 
             bg_color="#141414", 
@@ -92,8 +92,8 @@ class FloatInput(BaseSettingInput):
         self.slider = ctk.CTkSlider(
             self, 
             variable=self.variable,
-            width=200, 
-            height=20, 
+            width=theme.px(200),
+            height=theme.px(20),
             fg_color="#444444", 
             progress_color="#ffeabf", 
             button_color="#ffcc66",
@@ -125,9 +125,9 @@ class BoolInput(BaseSettingInput):
             self, 
             variable=self.checkbox_variable, 
             textvariable=self.checkbox_label,
-            width=85,
-            checkbox_width=30,
-            checkbox_height=30,
+            width=theme.px(85),
+            checkbox_width=theme.px(30),
+            checkbox_height=theme.px(30),
             corner_radius=0,
             font=theme.font(theme.FONT_SIZE_BODY),
             fg_color="#444444",
@@ -150,8 +150,8 @@ class StringInput(BaseSettingInput):
             self, 
             variable=self.variable, 
             values=choices,
-            width=250, 
-            height=35, 
+            width=theme.px(250),
+            height=theme.px(35),
             font=theme.font(theme.FONT_SIZE_BODY), 
             dropdown_font=theme.font(theme.FONT_SIZE_BODY),
             text_color="#fff7e3", 
@@ -176,9 +176,9 @@ class ReadonlyInput(BaseSettingInput):
         self.field = ctk.CTkEntry(
             self, 
             textvariable=self.variable, 
-            state="disabled", 
-            width=350,
-            height=35,
+            state="disabled",
+            width=theme.px(350),
+            height=theme.px(35),
             font=theme.font(theme.FONT_SIZE_BODY), 
             text_color="#fff7e3", 
             fg_color="#343434",
@@ -197,35 +197,35 @@ class SettingItem(ctk.CTkFrame):
         self.label = ctk.CTkLabel(
             self, 
             text=config_item.label,
-            width=300,
+            width=theme.px(300),
             font=theme.font(theme.FONT_SIZE_HEADING),
             text_color="#fff7e3", 
             bg_color="#141414",
         )
-        self.label.grid(row=0, column=0, in_=self, sticky="w", padx=(15, 15), pady=(15, 15))
+        self.label.grid(row=0, column=0, in_=self, sticky="w", padx=(theme.px(15), theme.px(15)), pady=(theme.px(15), theme.px(15)))
 
         if config_item.editable:
             range = config_item.range
             if config_item.type == "int":
                 if range is None:
                     range = (0, 100, 1)
-                self.input = IntInput(self, 400, height, range[0], range[1], range[2], lambda *args: command())
+                self.input = IntInput(self, theme.px(400), height, range[0], range[1], range[2], lambda *args: command())
             elif config_item.type == "float":
                 if range is None:
                     range = (0, 10, 0.1)
-                self.input = FloatInput(self, 400, height, range[0], range[1], range[2], lambda *args: command())
+                self.input = FloatInput(self, theme.px(400), height, range[0], range[1], range[2], lambda *args: command())
             elif config_item.type == "bool":
-                self.input = BoolInput(self, 400, height, lambda *args: command())
+                self.input = BoolInput(self, theme.px(400), height, lambda *args: command())
             elif config_item.type == "str":
                 if range is None:
                     range = ["None"]
-                self.input = StringInput(self, 400, height, range, lambda *args: command())
+                self.input = StringInput(self, theme.px(400), height, range, lambda *args: command())
             else:
                 raise Exception(f"Unknown config type: {config_item.type}")
         else:
-            self.input = ReadonlyInput(self, 400, height, config_item.value, lambda *args: command())
+            self.input = ReadonlyInput(self, theme.px(400), height, config_item.value, lambda *args: command())
 
-        self.input.grid(row=0, column=1, in_=self, sticky="nwse", padx=(15, 15), pady=(15, 15))
+        self.input.grid(row=0, column=1, in_=self, sticky="nwse", padx=(theme.px(15), theme.px(15)), pady=(theme.px(15), theme.px(15)))
 
     def get(self):
         return self.input.get()

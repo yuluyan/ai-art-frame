@@ -1,3 +1,4 @@
+import argparse
 import logging
 import sys
 
@@ -38,10 +39,17 @@ from managers.upload_manager import UploadServer
 
 
 def main():
+    parser = argparse.ArgumentParser(description="AI Art Frame")
+    parser.add_argument(
+        "--windowed", action="store_true",
+        help="Run in a scaled-down 540x960 window (for PC debugging) instead of fullscreen.",
+    )
+    args, _ = parser.parse_known_args()
+
     image_manager = ImageManager(os.path.join(os.path.dirname(__file__), '..', 'imgs'), OpenAIImageGenerator())
     config_manager = ConfigManager()
 
-    app = App()
+    app = App(windowed=args.windowed)
     app.set_managers(image_manager, config_manager)
 
     # Web upload server: a phone/browser on the same Wi-Fi can push images

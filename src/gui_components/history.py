@@ -36,8 +36,8 @@ class GalleryItem(ctk.CTkFrame):
             text=display_text, 
             justify="center", 
             # wraplength=image_width - 20, 
-            pady=2, width=image_width, 
-            height=40, 
+            pady=2, width=image_width,
+            height=theme.px(40),
             fg_color="#141414", 
             text_color="#fff7e3",
             font=theme.font(theme.FONT_SIZE_CAPTION)

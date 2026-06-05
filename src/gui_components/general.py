@@ -57,7 +57,7 @@ class StyleTile(tk.Button):
             activeforeground=self.fc,
             activebackground=self.bc,
             highlightthickness=0,
-            wraplength=200,
+            wraplength=theme.px(200),
             justify="center",
             command=command,
             **kwargs

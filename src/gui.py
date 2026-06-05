@@ -65,9 +65,9 @@ class ScrollableGalleryFrame(ctk.CTkScrollableFrame):
 
     def add_item(self, record):
         item = GalleryItem(
-            self, 
-            self.width / 3 - 30, 
-            (self.width / 3 - 30) * self.aspect_ratio, 
+            self,
+            self.width / 3 - theme.px(30),
+            (self.width / 3 - theme.px(30)) * self.aspect_ratio,
             record.uuid, 
             record.title, 
             self.image_manager.uuid_to_path(record.uuid), 
@@ -77,7 +77,7 @@ class ScrollableGalleryFrame(ctk.CTkScrollableFrame):
 
         cur_len = len(self.item_list)
         target_row, target_col = divmod(cur_len, 3)
-        item.grid(row=target_row, column=target_col, columnspan=1, pady=(25, 25), padx=(15, 15))
+        item.grid(row=target_row, column=target_col, columnspan=1, pady=(theme.px(25), theme.px(25)), padx=(theme.px(15), theme.px(15)))
         self.item_list.append(item)
 
     def remove_item(self, uuid):
@@ -89,7 +89,7 @@ class ScrollableGalleryFrame(ctk.CTkScrollableFrame):
 
         for i, it in enumerate(self.item_list):
             target_row, target_col = divmod(i, 3)
-            it.grid(row=target_row, column=target_col, columnspan=1, pady=(25, 25), padx=(15, 15))
+            it.grid(row=target_row, column=target_col, columnspan=1, pady=(theme.px(25), theme.px(25)), padx=(theme.px(15), theme.px(15)))
 
 
 class ScrollableSettingFrame(ctk.CTkScrollableFrame):
@@ -114,11 +114,11 @@ class ScrollableSettingFrame(ctk.CTkScrollableFrame):
         self.setting_items = {}
         row_id = 0
         for config_group in self.config_manager.get_all_configs():
-            setting_group_label = SettingGroupLabel(self, self.width, 50, config_group.label)
-            setting_group_label.grid(row=row_id, column=0, pady=(35, 0))
+            setting_group_label = SettingGroupLabel(self, self.width, theme.px(50), config_group.label)
+            setting_group_label.grid(row=row_id, column=0, pady=(theme.px(35), 0))
             row_id += 1
             for config in config_group.items:
-                self.setting_items[config.name] = SettingItem(self, self.width, 50, config, command=self._on_change)
+                self.setting_items[config.name] = SettingItem(self, self.width, theme.px(50), config, command=self._on_change)
                 self.setting_items[config.name].set(config.value)
                 self.setting_items[config.name].grid(row=row_id, column=0)
                 row_id += 1
@@ -131,8 +131,15 @@ class ScrollableSettingFrame(ctk.CTkScrollableFrame):
 
 
 class App(ctk.CTk):
-    def __init__(self):
+    def __init__(self, windowed=False):
         super().__init__()
+
+        # PC debug: a scaled-down window instead of fullscreen. `theme` drives the
+        # scale for both pixel geometry (theme.px) and fonts (theme.font); at 1.0
+        # (the frame) both are the identity, so Pi behavior is unchanged.
+        self.windowed = windowed
+        self.scale = 0.5 if windowed else 1.0
+        theme.set_scale(self.scale)
 
         self.image_uuid = None
         self.do_resize = True
@@ -167,14 +174,22 @@ class App(ctk.CTk):
         )
         self.voice_control.start()
 
-        # self.width, self.height = 720, 1280
-        self.width, self.height = 1080, 1920
-        # self.width, self.height = 1920, 1080
-        
+        # Logical frame is 1080x1920; theme.px applies the active scale, so the
+        # windowed debug build is a true shrink (540x960 at scale 0.5).
+        self.width, self.height = theme.px(1080), theme.px(1920)
         self.image_height = self.height
 
-        self.attributes("-fullscreen", True)
-        self.config(cursor="none")
+        if self.windowed:
+            # Pin customtkinter's DPI scaling to 1.0 so the window is exactly
+            # 540x960 and ctk widgets line up with the tk canvas at our manual
+            # scale (otherwise a high-DPI PC double-scales). Normal-chrome,
+            # movable window with a visible cursor for debugging.
+            ctk.set_widget_scaling(1.0)
+            ctk.set_window_scaling(1.0)
+            self.config(cursor="")
+        else:
+            self.attributes("-fullscreen", True)
+            self.config(cursor="none")
 
         self.title("AI Art Frame")
         self.geometry(f"{self.width}x{self.height}")
@@ -213,8 +228,8 @@ class App(ctk.CTk):
         # listen status
         self.listen_frame = tk.Frame(self, bg="#141414")
         self.listen_text =  tk.StringVar()
-        self.listen_status = tk.Label(self, textvariable=self.listen_text, bg="#141414", fg="#fff7e3", font=theme.font(theme.FONT_SIZE_CAPTION), wraplength=500, justify="center")
-        self.listen_progressbar = ctk.CTkProgressBar(self, mode="indeterminate", indeterminate_speed=1.5, width=400, height=20, progress_color="#fff7e3", corner_radius=0)
+        self.listen_status = tk.Label(self, textvariable=self.listen_text, bg="#141414", fg="#fff7e3", font=theme.font(theme.FONT_SIZE_CAPTION), wraplength=theme.px(500), justify="center")
+        self.listen_progressbar = ctk.CTkProgressBar(self, mode="indeterminate", indeterminate_speed=1.5, width=theme.px(400), height=theme.px(20), progress_color="#fff7e3", corner_radius=0)
 
         # history frame
         self.history_frame_width = int(self.width * 0.8)
@@ -223,8 +238,8 @@ class App(ctk.CTk):
         self.history_close_button = BlockButton(self, "close", "#b3b3b3", theme.FONT_SIZE_BODY, command=self.hide_history_frame)
 
         # setting frame
-        self.setting_frame_width = min(760, self.width * 0.75)
-        self.setting_frame_height = min(650, self.height * 0.75)
+        self.setting_frame_width = min(theme.px(760), self.width * 0.75)
+        self.setting_frame_height = min(theme.px(650), self.height * 0.75)
         self.setting_frame = None
         self.setting_changed = tk.BooleanVar(value=False)
         self.setting_save_button = BlockButton(self, "save", "#8df0ad", theme.FONT_SIZE_BODY, command=self.save_setting)
@@ -235,7 +250,7 @@ class App(ctk.CTk):
         self.upload_qr_label = tk.Label(self, bg="#fffef5", bd=0, highlightthickness=0)
         self.upload_title_label = tk.Label(self, text="UPLOAD IMAGES", bg="#141414", fg="#fff7e3", font=theme.font(theme.FONT_SIZE_TITLE))
         self.upload_url_label = tk.Label(self, bg="#141414", fg="#8df0ad", font=theme.font(theme.FONT_SIZE_HEADING))
-        self.upload_hint_label = tk.Label(self, bg="#141414", fg="#b9b29c", font=theme.font(theme.FONT_SIZE_CAPTION, "normal"), wraplength=560, justify="center")
+        self.upload_hint_label = tk.Label(self, bg="#141414", fg="#b9b29c", font=theme.font(theme.FONT_SIZE_CAPTION, "normal"), wraplength=theme.px(560), justify="center")
         self.upload_close_button = BlockButton(self, "close", "#b3b3b3", theme.FONT_SIZE_BODY, command=self.hide_upload_info)
 
         # style picker (NEW -> choose a style): a borderless 3x3 grid of tiles
@@ -364,16 +379,17 @@ class App(ctk.CTk):
         self.canvas.update()
 
     def show_menu(self):
-        menu_h = 680
+        menu_h = theme.px(680)
         top = (self.height - menu_h) // 2
-        self.menu_frame.place(relx=0.5, y=top, anchor=tk.N, width=600, height=menu_h)
-        self.reset_button.place(relx=0.5, y=50 + top, anchor=tk.CENTER, width=600, height=80)
-        self.upload_button.place(relx=0.5, y=140 + top, anchor=tk.CENTER, width=600, height=80)
-        self.history_button.place(relx=0.5, y=230 + top, anchor=tk.CENTER, width=600, height=80)
-        self.setting_button.place(relx=0.5, y=320 + top, anchor=tk.CENTER, width=600, height=80)
-        self.sync_button.place(relx=0.5, y=410 + top, anchor=tk.CENTER, width=600, height=80)
-        self.close_overlay_button.place(relx=0.5, y=500 + top, anchor=tk.CENTER, width=600, height=80)
-        self.exit_button.place(relx=0.5, y=620 + top, anchor=tk.CENTER, width=600, height=80)
+        w, h = theme.px(600), theme.px(80)
+        self.menu_frame.place(relx=0.5, y=top, anchor=tk.N, width=w, height=menu_h)
+        self.reset_button.place(relx=0.5, y=theme.px(50) + top, anchor=tk.CENTER, width=w, height=h)
+        self.upload_button.place(relx=0.5, y=theme.px(140) + top, anchor=tk.CENTER, width=w, height=h)
+        self.history_button.place(relx=0.5, y=theme.px(230) + top, anchor=tk.CENTER, width=w, height=h)
+        self.setting_button.place(relx=0.5, y=theme.px(320) + top, anchor=tk.CENTER, width=w, height=h)
+        self.sync_button.place(relx=0.5, y=theme.px(410) + top, anchor=tk.CENTER, width=w, height=h)
+        self.close_overlay_button.place(relx=0.5, y=theme.px(500) + top, anchor=tk.CENTER, width=w, height=h)
+        self.exit_button.place(relx=0.5, y=theme.px(620) + top, anchor=tk.CENTER, width=w, height=h)
 
     def hide_menu(self):
         self.menu_frame.place_forget()
@@ -400,8 +416,8 @@ class App(ctk.CTk):
             self._reschedule_rotation()
 
     def show_listen_status(self):
-        self.listen_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER, width=600, height=400)
-        self.listen_status.place(relx=0.5, rely=0.5, anchor=tk.CENTER, width=600, height=400)
+        self.listen_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER, width=theme.px(600), height=theme.px(400))
+        self.listen_status.place(relx=0.5, rely=0.5, anchor=tk.CENTER, width=theme.px(600), height=theme.px(400))
         self.listen_text.set("Please wait...")
         self.update()
     
@@ -443,25 +459,26 @@ class App(ctk.CTk):
         self.show_upload_info(self.upload_server.get_url())
 
     def show_upload_info(self, url):
+        qr_size = theme.px(460)
         try:
-            qr = qrcode.make(url).convert("RGB").resize((460, 460), Image.NEAREST)
+            qr = qrcode.make(url).convert("RGB").resize((qr_size, qr_size), Image.NEAREST)
             self.qr_image_buffer = ImageTk.PhotoImage(qr)
             self.upload_qr_label.configure(image=self.qr_image_buffer)
         except Exception as e:
             logger.warning(f"QR generation failed: {e}")
             self.qr_image_buffer = None
 
-        fw, fh = 640, 820
+        fw, fh = theme.px(640), theme.px(820)
         top = (self.height - fh) // 2
         self.upload_frame.place(relx=0.5, y=top, anchor=tk.N, width=fw, height=fh)
-        self.upload_title_label.place(relx=0.5, y=top + 40, anchor=tk.N)
+        self.upload_title_label.place(relx=0.5, y=top + theme.px(40), anchor=tk.N)
         if self.qr_image_buffer is not None:
-            self.upload_qr_label.place(relx=0.5, y=top + 100, anchor=tk.N, width=460, height=460)
+            self.upload_qr_label.place(relx=0.5, y=top + theme.px(100), anchor=tk.N, width=qr_size, height=qr_size)
         self.upload_url_label.configure(text=url)
-        self.upload_url_label.place(relx=0.5, y=top + 590, anchor=tk.N)
+        self.upload_url_label.place(relx=0.5, y=top + theme.px(590), anchor=tk.N)
         self.upload_hint_label.configure(text="Open this address on a phone on the same Wi-Fi, then pick images to send.")
-        self.upload_hint_label.place(relx=0.5, y=top + 630, anchor=tk.N, width=560)
-        self.upload_close_button.place(relx=0.5, y=top + 730, anchor=tk.N, width=300, height=70)
+        self.upload_hint_label.place(relx=0.5, y=top + theme.px(630), anchor=tk.N, width=theme.px(560))
+        self.upload_close_button.place(relx=0.5, y=top + theme.px(730), anchor=tk.N, width=theme.px(300), height=theme.px(70))
         self.update()
 
     def hide_upload_info(self):
@@ -574,9 +591,9 @@ class App(ctk.CTk):
     def show_style_picker(self):
         # Borderless, gapless: 3x3 tiles fill the grid block, cancel spans its
         # full width directly beneath. Anchored on relx=0.5 (like the menu) so it
-        # stays centered even when the fullscreen window is wider than self.width.
-        tile = 240
-        cancel_h = 96
+        # stays centered even when the window is wider than self.width.
+        tile = theme.px(240)
+        cancel_h = theme.px(96)
         grid = 3 * tile
         half = grid // 2
         top = (self.height - (grid + cancel_h)) // 2
@@ -652,7 +669,7 @@ class App(ctk.CTk):
         # gpt-image-2 has no progress endpoint, so show an indeterminate spinner
         # while the single blocking generate() call runs. Drop it to the bottom of
         # the box (y=165) so it sits below the title/prompt text already shown.
-        self.run_on_ui(lambda: self.show_listen_progressbar(y=165))
+        self.run_on_ui(lambda: self.show_listen_progressbar(y=theme.px(165)))
         try:
             record = self.image_manager.generate(title, prompt)
         except Exception as e:
@@ -671,11 +688,11 @@ class App(ctk.CTk):
         self.run_on_ui(_finish)
 
     def show_history_frame(self):
-        yoffset = 50
-        border_offset = 8
+        yoffset = theme.px(50)
+        border_offset = theme.px(8)
         self.hide_menu()
         self.history_frame.place(relx=0.5, y=self.height // 2 - yoffset, anchor=tk.CENTER)
-        self.history_close_button.place(relx=0.5, y=self.history_frame_height // 2 + self.height // 2 + border_offset - yoffset, anchor=tk.N, width=self.history_frame_width + border_offset * 2, height=60)
+        self.history_close_button.place(relx=0.5, y=self.history_frame_height // 2 + self.height // 2 + border_offset - yoffset, anchor=tk.N, width=self.history_frame_width + border_offset * 2, height=theme.px(60))
     
     def hide_history_frame(self):
         self.history_frame.place_forget()
@@ -683,13 +700,13 @@ class App(ctk.CTk):
         self.show_menu()
         
     def show_setting_frame(self):
-        yoffset = 50
-        border_offset = 4
+        yoffset = theme.px(50)
+        border_offset = theme.px(4)
         self.hide_menu()
         self.setting_frame.update_setting()
         self.setting_frame.place(relx=0.5, y=self.height // 2 - yoffset, anchor=tk.CENTER)
-        self.setting_save_button.place(relx=0.5, y=self.setting_frame_height // 2 + self.height // 2 - yoffset + 30, anchor=tk.E, width=self.setting_frame_width // 2 + border_offset * 2, height=60)
-        self.setting_close_button.place(relx=0.5, y=self.setting_frame_height // 2 + self.height // 2 - yoffset + 30, anchor=tk.W, width=self.setting_frame_width // 2 + border_offset * 2, height=60)
+        self.setting_save_button.place(relx=0.5, y=self.setting_frame_height // 2 + self.height // 2 - yoffset + theme.px(30), anchor=tk.E, width=self.setting_frame_width // 2 + border_offset * 2, height=theme.px(60))
+        self.setting_close_button.place(relx=0.5, y=self.setting_frame_height // 2 + self.height // 2 - yoffset + theme.px(30), anchor=tk.W, width=self.setting_frame_width // 2 + border_offset * 2, height=theme.px(60))
     
     def hide_setting_frame(self):
         self.setting_frame.place_forget()

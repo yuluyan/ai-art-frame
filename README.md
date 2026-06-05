@@ -20,6 +20,12 @@ This project uses [uv](https://docs.astral.sh/uv/) to manage the Python version 
    ```sh
    uv run python src/main.py
    ```
+   On a PC the frame is fullscreen at 1080×1920, which won't fit a landscape
+   monitor. For development, run it as a scaled-down (540×960) movable window:
+   ```sh
+   uv run python src/main.py --windowed
+   ```
+   The Raspberry Pi launches without the flag and stays fullscreen.
 
 **Managing dependencies:** `uv add <pkg>` / `uv remove <pkg>` to change them, `uv lock --upgrade` to refresh the lockfile. Commit `pyproject.toml` and `uv.lock`; the `.venv/` folder is git-ignored and recreated by `uv sync`.
 
