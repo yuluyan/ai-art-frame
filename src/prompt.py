@@ -8,15 +8,18 @@ from utils import get_openai_key
 PROMPT_MODEL = "gpt-4o-mini"
 
 SYSTEM_PROMPT = (
-    "You are an art director who turns a short spoken idea into a single vivid, "
-    "concrete prompt for an AI image generator (gpt-image-2). Write natural, "
-    "descriptive English."
+    "You are an art director who expands a short spoken idea into a single vivid, "
+    "concrete prompt for an AI image generator (gpt-image-2). Stay strictly "
+    "faithful to what the user asked for: keep their exact subject and every "
+    "detail they named, and enrich it only with setting, light, and mood. Never "
+    "drop or replace the subject. Write natural, descriptive English."
 )
 
 # Neutral rewrite — honors any medium/style the user happens to speak ("Plain").
 USER_TEMPLATE = """Turn the idea below into ONE image prompt for gpt-image-2.
 
 Guidelines:
+- Keep the idea's exact subject and every specific detail it names (objects, counts, colors, actions, relationships). These are hard requirements: never omit, swap, generalize, or invent over them — build the scene around them.
 - Write 1-3 sentences of natural language (NOT a comma-separated tag list).
 - Describe the subject, setting, composition, lighting, color palette, mood, and artistic medium/style.
 - Be concrete and evocative; avoid brand names, real public figures, embedded text, and watermarks.
@@ -29,6 +32,7 @@ Idea: '{idea}'"""
 USER_TEMPLATE_STYLED = """Turn the idea below into ONE image prompt for gpt-image-2.
 
 Guidelines:
+- Keep the idea's exact subject and every specific detail it names (objects, counts, colors, actions, relationships). These are hard requirements: never omit, swap, generalize, or invent over them — build the scene around them.
 - Write 1-3 sentences of natural language (NOT a comma-separated tag list).
 - Describe the subject, setting, composition, lighting, color palette, and mood.
 - {directive}
@@ -113,7 +117,9 @@ def speech_to_prompt(short_idea: str, style: str = STYLE_PLAIN) -> str:
         "model": PROMPT_MODEL,
         "max_tokens": 600,
         "n": 1,
-        "temperature": 0.8,
+        # Lower than a typical "be creative" setting: the rewrite should enrich
+        # the idea, not drift off it and lose the user's named subject.
+        "temperature": 0.6,
     }
 
     response = requests.post(url, headers=headers, json=data, timeout=60)
