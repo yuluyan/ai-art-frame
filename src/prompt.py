@@ -3,20 +3,20 @@ import requests
 from utils import get_openai_key
 
 # A small, current chat model is plenty for turning a spoken idea into a vivid
-# art-direction sentence. gpt-image-2 follows natural language well, so we no
+# art-direction sentence. gpt-image-2.6-sunburst follows natural language well, so we no
 # longer emit Stable-Diffusion-style comma "soup".
 PROMPT_MODEL = "gpt-4o-mini"
 
 SYSTEM_PROMPT = (
     "You are an art director who expands a short spoken idea into a single vivid, "
-    "concrete prompt for an AI image generator (gpt-image-2). Stay strictly "
+    "concrete prompt for an AI image generator (gpt-image-2.6-sunburst). Stay strictly "
     "faithful to what the user asked for: keep their exact subject and every "
     "detail they named, and enrich it only with setting, light, and mood. Never "
     "drop or replace the subject. Write natural, descriptive English."
 )
 
 # Neutral rewrite — honors any medium/style the user happens to speak ("Plain").
-USER_TEMPLATE = """Turn the idea below into ONE image prompt for gpt-image-2.
+USER_TEMPLATE = """Turn the idea below into ONE image prompt for gpt-image-2.6-sunburst.
 
 Guidelines:
 - Keep the idea's exact subject and every specific detail it names (objects, counts, colors, actions, relationships). These are hard requirements: never omit, swap, generalize, or invent over them — build the scene around them.
@@ -29,7 +29,7 @@ Idea: '{idea}'"""
 
 # Styled rewrite — the per-style {directive} replaces the open-ended medium/style
 # line so the rewritten prompt always renders the idea in the chosen style.
-USER_TEMPLATE_STYLED = """Turn the idea below into ONE image prompt for gpt-image-2.
+USER_TEMPLATE_STYLED = """Turn the idea below into ONE image prompt for gpt-image-2.6-sunburst.
 
 Guidelines:
 - Keep the idea's exact subject and every specific detail it names (objects, counts, colors, actions, relationships). These are hard requirements: never omit, swap, generalize, or invent over them — build the scene around them.

@@ -1,7 +1,7 @@
 # ai-art-frame
 
 Generate AI art for a wall picture-frame display by voice, powered by OpenAI
-**gpt-image-2**. Designed to run fullscreen on a Raspberry Pi — everything is
+**gpt-image-2.6-sunburst**. Designed to run fullscreen on a Raspberry Pi — everything is
 driven by tapping the screen.
 
 # Setup
@@ -33,7 +33,7 @@ This project uses [uv](https://docs.astral.sh/uv/) to manage the Python version 
 
 Tap the screen to open the menu:
 
-- **new** — pick a style from the 3×3 grid (**Plain** in the center, plus Realistic Photo, Oil Painting, Watercolor, Anime, Impressionist, Pixel Art, Pop Art, Minimalist), then speak an idea and gpt-image-2 generates an image in that style. **Plain** keeps your words neutral and honors any style you speak. Say `verbose ...` to skip prompt rewriting and use your words directly (the chosen style is not applied in verbose mode); include `... title X` to set the title.
+- **new** — pick a style from the 3×3 grid (**Plain** in the center, plus Realistic Photo, Oil Painting, Watercolor, Anime, Impressionist, Pixel Art, Pop Art, Minimalist), then speak an idea and gpt-image-2.6-sunburst generates an image in that style. **Plain** keeps your words neutral and honors any style you speak. Say `verbose ...` to skip prompt rewriting and use your words directly (the chosen style is not applied in verbose mode); include `... title X` to set the title.
 - **upload** — shows this frame's web address and a QR code. Open it on a phone on the same Wi-Fi to send your own images (see below).
 - **history** — browse past images; display or delete any of them.
 - **setting** — image generation, rotation, and general options.
@@ -45,7 +45,7 @@ Tap the screen to open the menu:
 - **quality** — `auto` / `high` / `medium` / `low`.
 - **background** — `auto` / `opaque` / `transparent`.
 
-The output **size is locked to `1152x2048`** (the frame's exact 9:16 aspect, and a valid multiple-of-16 size for gpt-image-2), so images fill the 1080×1920 frame with no bars or crop. Images are always stored on disk as PNG.
+The output **size is locked to `1152x2048`** (the frame's exact 9:16 aspect, and a valid multiple-of-16 size for gpt-image-2.6-sunburst), so images fill the 1080×1920 frame with no bars or crop. Images are always stored on disk as PNG.
 
 ## Auto-rotation / slideshow (setting → Rotation)
 

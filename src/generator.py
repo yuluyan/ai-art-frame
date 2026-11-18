@@ -29,14 +29,14 @@ class ImageGenerator:
 
 
 class OpenAIImageGenerator(ImageGenerator):
-    """Image generation backed by OpenAI's gpt-image-2 model.
+    """Image generation backed by OpenAI's gpt-image-2.6-sunburst model.
 
     The images endpoint always returns base64-encoded data for the gpt-image
     family (no `url` / `response_format`), so we decode `b64_json` directly.
     """
 
-    MODEL = "gpt-image-2"
-    # Size is LOCKED to the frame's exact 9:16 aspect. gpt-image-2 requires both
+    MODEL = "gpt-image-2.6-sunburst"
+    # Size is LOCKED to the frame's exact 9:16 aspect. gpt-image-2.6-sunburst requires both
     # edges to be multiples of 16, so the frame's native 1080x1920 isn't a valid
     # request; 1152x2048 has the identical aspect (0.5625) and downscales to fill
     # 1080x1920 with no letterbox bars and no crop.

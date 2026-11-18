@@ -666,7 +666,7 @@ class App(ctk.CTk):
                 _status_callback(f"Could not generate prompt: {e}")
                 prompt = speech
 
-        # gpt-image-2 has no progress endpoint, so show an indeterminate spinner
+        # gpt-image-2.6-sunburst has no progress endpoint, so show an indeterminate spinner
         # while the single blocking generate() call runs. Drop it to the bottom of
         # the box (y=165) so it sits below the title/prompt text already shown.
         self.run_on_ui(lambda: self.show_listen_progressbar(y=theme.px(165)))
